@@ -49,7 +49,7 @@ contract FraxVoterProxy {
     }
 
     function setStashAccess(address _stash, bool _status) external returns(bool){
-        require(msg.sender == operator, "!auth");
+        require(msg.sender == owner, "!auth");
         if(_stash != address(0)){
             stashPool[_stash] = _status;
         }

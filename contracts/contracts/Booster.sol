@@ -19,7 +19,7 @@ contract Booster{
 
     uint256 public crvIncentive = 1000; //incentive to crv stakers
     uint256 public cvxIncentive = 450; //incentive to native token stakers
-    uint256 public platformFee = 0; //possible fee to build treasury
+    uint256 public platformFee = 0; //possible fee for arbitrary means
     uint256 public constant MaxFees = 2000;
     uint256 public constant FEE_DENOMINATOR = 10000;
 
@@ -29,16 +29,10 @@ contract Booster{
     address public immutable staker;
     address public immutable minter;
     address public rewardFactory;
-    //address public stashFactory;
     address public tokenFactory;
-    // address public rewardArbitrator;
-    // address public voteDelegate;
     address public treasury;
-    address public cvxRewards; //cvx rewards
-    address public cvxcrvRewards; //cvxcrv rewards(crv)
-    // address public lockFees; //cvxcrv vecrv fees
-    // address public feeDistro;
-    // address public feeToken;
+    address public cvxRewards;
+    address public cvxcrvRewards;
 
     bool public isShutdown;
 
@@ -90,46 +84,16 @@ contract Booster{
     function setFactories(address _rfactory, address _tfactory) external {
         require(msg.sender == owner, "!auth");
         
-        //if(rewardFactory == address(0)){
-            rewardFactory = _rfactory;
-            tokenFactory = _tfactory;
-        //}
-
-        //updating stashFactory may be required to handle new types of gauges
-       // stashFactory = _sfactory;
+        rewardFactory = _rfactory;
+        tokenFactory = _tfactory;
     }
-
-    // function setArbitrator(address _arb) external {
-    //     require(msg.sender==owner, "!auth");
-    //     rewardArbitrator = _arb;
-    // }
-
-    // function setVoteDelegate(address _voteDelegate) external {
-    //     require(msg.sender==voteDelegate, "!auth");
-    //     voteDelegate = _voteDelegate;
-    // }
 
     function setRewardContracts(address _cvxcrvRewards, address _cvxRewards) external {
         require(msg.sender == owner, "!auth");
         
-        // if(lockRewards == address(0)){
-            cvxcrvRewards = _cvxcrvRewards;
-            cvxRewards = _cvxRewards;
-        // }
+        cvxcrvRewards = _cvxcrvRewards;
+        cvxRewards = _cvxRewards;
     }
-
-    // Set reward token and claim contract, get from Curve's registry
-    // function setFeeInfo(address _feeToken) external {
-    //     require(msg.sender==feeManager, "!auth");
-        
-    //     // feeDistro = IRegistry(registry).get_address(distributionAddressId);
-    //     // address _feeToken = IFeeDistro(feeDistro).token();
-    //     if(feeToken != _feeToken){
-    //         //create a new reward contract for the new token
-    //         lockFees = IRewardFactory(rewardFactory).CreateTokenRewards(_feeToken,lockRewards,address(this));
-    //         feeToken = _feeToken;
-    //     }
-    // }
 
     function setFees(uint256 _crvFees, uint256 _cvxFees, uint256 _platform) external{
         require(msg.sender==feeManager, "!auth");
@@ -154,7 +118,6 @@ contract Booster{
 
     /// END SETTER SECTION ///
 
-
     function poolLength() external view returns (uint256) {
         return poolInfo.length;
     }
@@ -169,10 +132,8 @@ contract Booster{
 
         //create a tokenized deposit
         address token = ITokenFactory(tokenFactory).CreateDepositToken(_lptoken);
-        //create a reward contract for crv rewards
+        //create a reward contract for rewards
         address newRewardPool = IRewardFactory(rewardFactory).CreateMainRewards(_gauge,token,pid);
-        //create a stash to handle extra incentives
-        // address stash = IStashFactory(stashFactory).CreateStash(pid,_gauge,staker,_stashVersion);
 
         //add the new pool
         poolInfo.push(
@@ -190,14 +151,6 @@ contract Booster{
         //set gauge redirect
         setGaugeRedirect(_gauge, newRewardPool);
 
-        //give stashes access to rewardfactory and voteproxy
-        //   voteproxy so it can grab the incentive tokens off the contract after claiming rewards
-        //   reward factory so that stashes can make new extra reward contracts if a new incentive is added to the gauge
-        // if(stash != address(0)){
-        //     poolInfo[pid].stash = stash;
-        //     IStaker(staker).setStashAccess(stash,true);
-        //     IRewardFactory(rewardFactory).setAccess(stash,true);
-        // }
         return true;
     }
 
@@ -252,12 +205,6 @@ contract Booster{
         require(gauge != address(0),"!gauge setting");
         IStaker(staker).deposit(lptoken,gauge);
 
-        //some gauges claim rewards when depositing, stash them in a seperate contract until next claim
-        // address stash = pool.stash;
-        // if(stash != address(0)){
-        //     IStash(stash).stashRewards();
-        // }
-
         address token = pool.token;
         if(_stake){
             //mint here and send to rewards on user behalf
@@ -300,13 +247,6 @@ contract Booster{
             IStaker(staker).withdraw(lptoken,gauge, _amount);
         }
 
-        //some gauges claim rewards when withdrawing, stash them in a seperate contract until next claim
-        //do not call if shutdown since stashes wont have access
-        // address stash = pool.stash;
-        // if(stash != address(0) && !isShutdown && !pool.shutdown){
-        //     IStash(stash).stashRewards();
-        // }
-        
         //return lp tokens
         IERC20(lptoken).safeTransfer(_to, _amount);
 
@@ -336,38 +276,7 @@ contract Booster{
         return true;
     }
 
-
-    //delegate address votes on dao
-    // function vote(uint256 _voteId, address _votingAddress, bool _support) external returns(bool){
-    //     require(msg.sender == voteDelegate, "!auth");
-    //     //require(_votingAddress == voteOwnership || _votingAddress == voteParameter, "!voteAddr");
-        
-    //     IStaker(staker).vote(_voteId,_votingAddress,_support);
-    //     return true;
-    // }
-
-    // function voteGaugeWeight(address[] calldata _gauge, uint256[] calldata _weight ) external returns(bool){
-    //     require(msg.sender == voteDelegate, "!auth");
-
-    //     for(uint256 i = 0; i < _gauge.length; i++){
-    //         IStaker(staker).voteGaugeWeight(_gauge[i],_weight[i]);
-    //     }
-    //     return true;
-    // }
-
-    // function claimRewards(uint256 _pid, address _gauge) external returns(bool){
-    //     address stash = poolInfo[_pid].stash;
-    //     require(msg.sender == stash,"!auth");
-
-    //     IStaker(staker).claimRewards(_gauge);
-    //     return true;
-    // }
-
     function setGaugeRedirect(address _gauge, address _rewards) internal returns(bool){
-        // address stash = poolInfo[_pid].stash;
-        // require(msg.sender == stash,"!auth");
-        // address gauge = poolInfo[_pid].gauge;
-        // address rewards = poolInfo[_pid].mainRewards;
         bytes memory data = abi.encodeWithSelector(bytes4(keccak256("set_rewards_receiver(address)")), _rewards);
         IStaker(staker).execute(_gauge,uint256(0),data);
         return true;
@@ -410,33 +319,5 @@ contract Booster{
             IRewards(cvxRewards).queueNewRewards(_cvxIncentive);
         }
     }
-
-    // function earmarkRewards(uint256 _pid) external returns(bool){
-    //     require(!isShutdown,"shutdown");
-    //     _earmarkRewards(_pid);
-    //     return true;
-    // }
-
-    // //claim fees from fee distro contract, put in lockers' reward contract
-    // function earmarkFees() external returns(bool){
-    //     //claim fee rewards
-    //     IStaker(staker).claimFees(feeDistro, feeToken);
-    //     //send fee rewards to reward contract
-    //     uint256 _balance = IERC20(feeToken).balanceOf(address(this));
-    //     IERC20(feeToken).safeTransfer(lockFees, _balance);
-    //     IRewards(lockFees).queueNewRewards(_balance);
-    //     return true;
-    // }
-
-    // //callback from reward contract when rewards are claimed.
-    // function rewardClaimed(uint256 _pid, address _address, uint256 _amount) external returns(bool){
-    //     address rewardContract = poolInfo[_pid].mainRewards;
-    //     require(msg.sender == rewardContract || msg.sender == lockRewards, "!auth");
-
-    //     //mint reward tokens
-    //     ITokenMinter(minter).mint(_address,_amount);
-        
-    //     return true;
-    // }
 
 }

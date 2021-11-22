@@ -14,14 +14,3 @@ Convex Smart Contract Platform for Non-Eth Chains
 - remove harvesters.  always claim and pull rewards when depositing/withdrawing/claiming
 - handling for crv/cvx to/from eth chain
 
-
-
-## Todo conversions
-- stash factory
-- stash
-- deposit token factory
-- deposit token
-- pool manager
-
-- remove stash? can redirect everything now.
-	- needs an token rescue module
