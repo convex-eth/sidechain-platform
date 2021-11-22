@@ -23,3 +23,5 @@ Convex Smart Contract Platform for Non-Eth Chains
 - deposit token
 - pool manager
 
+- remove stash? can redirect everything now.
+	- needs an token rescue module

@@ -4,6 +4,7 @@ pragma solidity 0.8.10;
 import "./interfaces/IGauge.sol";
 import "./interfaces/IStash.sol";
 import "./interfaces/IDeposit.sol";
+import "./interfaces/IRewardHook.sol";
 
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
@@ -23,8 +24,6 @@ contract ConvexRewardPool {
         address reward_token;
         uint128 reward_integral;
         uint128 reward_remaining;
-        mapping(address => uint256) reward_integral_for;
-        mapping(address => uint256) claimable_reward;
     }
 
     //supply and balances
@@ -42,8 +41,12 @@ contract ConvexRewardPool {
 
     //rewards
     RewardType[] public rewards;
-    mapping(address => bool) rewardMap;
+    mapping(address => mapping(address => uint256)) public reward_integral_for;
+    mapping(address => mapping(address => uint256)) public claimable_reward;
+    mapping(address => bool) public rewardMap;
     uint256 public stashRewardIndex;
+    address public rewardHook;
+    address public crv;
 
     //management
     bool public isInit;
@@ -57,18 +60,20 @@ contract ConvexRewardPool {
     constructor(){}
 
     function initialize(
+        address _crv,
         address _curveGauge,
-        address _convexStash,
+        // address _convexStash,
         address _convexStaker,
         address _convexBooster,
         address _convexToken,
         uint256 _poolId)
-    virtual external {
+    external {
         require(!isInit,"already init");
 
         isInit = true;
+        crv = _crv;
         curveGauge = _curveGauge;
-        convexStash = _convexStash;
+        // convexStash = _convexStash;
         convexStaker = _convexStaker;
         convexBooster = _convexBooster;
         convexToken = _convexToken;
@@ -92,18 +97,52 @@ contract ConvexRewardPool {
         }
 
         //grab any extra rewards specifically for convex pools from the stash
-        uint256 stashRewards = IStash(convexStash).rewardCount();
-        for (uint256 i = stashRewardIndex; i < stashRewards; i++) {
-            address rewardToken = IStash(convexStash).rewardList(i);
-            if(rewardToken == address(0)) break;
+        // uint256 stashRewards = IStash(convexStash).rewardCount();
+        // for (uint256 i = stashRewardIndex; i < stashRewards; i++) {
+        //     address rewardToken = IStash(convexStash).rewardList(i);
+        //     if(rewardToken == address(0)) break;
 
-            //add to reward list if new
-            if(!rewardMap[rewardToken]){
-                RewardType storage r = rewards.push();
-                r.reward_token = rewardToken;
-                rewardMap[rewardToken] = true;
-                emit RewardAdded(rewardToken);
-            }
+        //     //add to reward list if new
+            // if(!rewardMap[rewardToken]){
+            //     RewardType storage r = rewards.push();
+            //     r.reward_token = rewardToken;
+            //     rewardMap[rewardToken] = true;
+            //     emit RewardAdded(rewardToken);
+            // }
+        // }
+    }
+
+    //register an extra reward token to be handled
+    // (any new incentive that is not directly on curve gauges)
+    function setExtraReward(address _token) external{
+        //owner of booster can set extra rewards
+        require(IDeposit(convexBooster).owner() == msg.sender, "!owner");
+        
+        if(!rewardMap[_token]){
+            RewardType storage r = rewards.push();
+            r.reward_token = _token;
+            rewardMap[_token] = true;
+            emit RewardAdded(_token);
+        }
+    }
+
+    function setRewardHook(address _hook) external{
+        //owner of booster can set reward hook
+        require(IDeposit(convexBooster).owner() == msg.sender, "!owner");
+        rewardHook = _hook;
+    }
+
+    function updateRewardsAndClaim() internal{
+        //make sure reward list is up to date
+        updateRewardList();
+
+        //claim rewards from gauge
+        IGauge(curveGauge).claim_rewards(convexStaker);
+
+        //hook for reward pulls
+        if(rewardHook != address(0)){
+            try IRewardHook(rewardHook).onRewardClaim(){
+            }catch{}
         }
     }
 
@@ -118,25 +157,37 @@ contract ConvexRewardPool {
         //getReward is unguarded so we use reward_remaining to keep track of how much was actually claimed
         uint256 bal = IERC20(reward.reward_token).balanceOf(address(this));
 
+        //if reward token is crv, need to calculate fees
+        if(reward.reward_token == crv){
+            uint256 diff = bal - reward.reward_remaining;
+            uint256 fees = IDeposit(convexBooster).calculatePlatformFees(diff);
+            if(fees > 0){
+                //send to booster to process later
+                IERC20(crv).safeTransfer(convexBooster, fees);
+            }
+            bal -= fees;
+        }
+
         if (_totalSupply > 0 && (bal - reward.reward_remaining) > 0) {
             reward.reward_integral = reward.reward_integral + uint128( (bal - reward.reward_remaining) * 1e20 / _totalSupply);
         }
 
         //update user integrals
-        uint userI = reward.reward_integral_for[_account];
+        // uint userI = reward.reward_integral_for[_account];
+        uint userI = reward_integral_for[reward.reward_token][_account];
         if(_isClaim || userI < reward.reward_integral){
             if(_isClaim){
-                uint256 receiveable = reward.claimable_reward[_account] + (_balances[_account] * uint256(reward.reward_integral - userI) / 1e20);
+                uint256 receiveable = claimable_reward[reward.reward_token][_account] + (_balances[_account] * uint256(reward.reward_integral - userI) / 1e20);
                 if(receiveable > 0){
-                    reward.claimable_reward[_account] = 0;
+                    claimable_reward[reward.reward_token][_account] = 0;
                     IERC20(reward.reward_token).safeTransfer(_account, receiveable);
                     emit RewardPaid(_account, receiveable);
                     bal -= receiveable;
                 }
             }else{
-                reward.claimable_reward[_account] = reward.claimable_reward[_account] + ( _balances[_account] * uint256(reward.reward_integral - userI) / 1e20);
+                claimable_reward[reward.reward_token][_account] = claimable_reward[reward.reward_token][_account] + ( _balances[_account] * uint256(reward.reward_integral - userI) / 1e20);
             }
-            reward.reward_integral_for[_account] = reward.reward_integral;
+            reward_integral_for[reward.reward_token][_account] = reward.reward_integral;
         }
 
 
@@ -147,11 +198,8 @@ contract ConvexRewardPool {
     }
 
     function _checkpoint(address _account) internal {
-        //make sure reward list is up to date
-        updateRewardList();
-
-        //have stash claim for us because the stash could have extra rewards as well
-        IStash(convexStash).claimRewards();
+        //update rewards and claim
+        updateRewardsAndClaim();
 
         uint256 rewardCount = rewards.length;
         for (uint256 i = 0; i < rewardCount; i++) {
@@ -160,11 +208,8 @@ contract ConvexRewardPool {
     }
 
     function _checkpointAndClaim(address _account) internal {
-        //make sure reward list is up to date
-        updateRewardList();
-
-        //have stash claim for us because the stash could have extra rewards as well
-        IStash(convexStash).claimRewards();
+        //update rewards and claim
+        updateRewardsAndClaim();
 
         uint256 rewardCount = rewards.length;
         for (uint256 i = 0; i < rewardCount; i++) {
@@ -204,8 +249,8 @@ contract ConvexRewardPool {
                 I = I + (d_reward * 1e20 / _totalSupply);
             }
 
-            uint256 newlyClaimable = _balances[_account] * (I - reward.reward_integral_for[_account]) / 1e20;
-            claimable[i].amount = reward.claimable_reward[_account] + newlyClaimable;
+            uint256 newlyClaimable = _balances[_account] * (I - reward_integral_for[reward.reward_token][_account]) / 1e20;
+            claimable[i].amount = claimable_reward[reward.reward_token][_account] + newlyClaimable;
             claimable[i].token = reward.reward_token;
         }
         return claimable;
@@ -231,8 +276,8 @@ contract ConvexRewardPool {
                 I = I + (d_reward * 1e20 / _totalSupply);
             }
 
-            uint256 newlyClaimable = _balances[_account] * (I - reward.reward_integral_for[_account]) / 1e20;
-            claimable[i].amount = reward.claimable_reward[_account] + newlyClaimable;
+            uint256 newlyClaimable = _balances[_account] * (I - reward_integral_for[reward.reward_token][_account]) / 1e20;
+            claimable[i].amount = claimable_reward[reward.reward_token][_account] + newlyClaimable;
             claimable[i].token = reward.reward_token;
         }
         return claimable;

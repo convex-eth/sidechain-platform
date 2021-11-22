@@ -12,4 +12,5 @@ interface IDeposit {
    function rewardArbitrator() external returns(address);
    function setGaugeRedirect(uint256 _pid) external returns(bool);
    function owner() external returns(address);
+   function calculatePlatformFees(uint256 _amount) external view returns(uint256);
 }
