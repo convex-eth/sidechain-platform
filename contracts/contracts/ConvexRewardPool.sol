@@ -62,7 +62,6 @@ contract ConvexRewardPool {
     function initialize(
         address _crv,
         address _curveGauge,
-        // address _convexStash,
         address _convexStaker,
         address _convexBooster,
         address _convexToken,
@@ -95,21 +94,6 @@ contract ConvexRewardPool {
                 emit RewardAdded(rewardToken);
             }
         }
-
-        //grab any extra rewards specifically for convex pools from the stash
-        // uint256 stashRewards = IStash(convexStash).rewardCount();
-        // for (uint256 i = stashRewardIndex; i < stashRewards; i++) {
-        //     address rewardToken = IStash(convexStash).rewardList(i);
-        //     if(rewardToken == address(0)) break;
-
-        //     //add to reward list if new
-            // if(!rewardMap[rewardToken]){
-            //     RewardType storage r = rewards.push();
-            //     r.reward_token = rewardToken;
-            //     rewardMap[rewardToken] = true;
-            //     emit RewardAdded(rewardToken);
-            // }
-        // }
     }
 
     //register an extra reward token to be handled

@@ -3,11 +3,10 @@ pragma solidity 0.8.10;
 
 import "./interfaces/IRewards.sol";
 import "./interfaces/ITokenFactory.sol";
-import "./interfaces/IStashFactory.sol";
-import "./interfaces/IStash.sol";
 import "./interfaces/IRewardFactory.sol";
 import "./interfaces/IStaker.sol";
 import "./interfaces/ITokenMinter.sol";
+import "./interfaces/IFeeDistro.sol";
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
@@ -17,22 +16,18 @@ contract Booster{
 
     address public immutable crv;
 
-    uint256 public crvIncentive = 1000; //incentive to crv stakers
-    uint256 public cvxIncentive = 450; //incentive to native token stakers
-    uint256 public platformFee = 0; //possible fee for arbitrary means
-    uint256 public constant MaxFees = 2000;
+    uint256 public fees = 1700; //platform fees
+    uint256 public constant MaxFees = 2500;
     uint256 public constant FEE_DENOMINATOR = 10000;
 
     address public owner;
     address public feeManager;
     address public poolManager;
+    address public rescueManager;
     address public immutable staker;
-    address public immutable minter;
     address public rewardFactory;
     address public tokenFactory;
-    address public treasury;
-    address public cvxRewards;
-    address public cvxcrvRewards;
+    address public feeDeposit;
 
     bool public isShutdown;
 
@@ -41,25 +36,24 @@ contract Booster{
         address token;
         address gauge;
         address mainRewards;
-       // address stash;
         bool shutdown;
     }
 
     //index(pid) -> pool
     PoolInfo[] public poolInfo;
     mapping(address => bool) public gaugeMap;
+    mapping(uint256 => uint256) public shutdownBalances; //pid -> lp balance
 
     event Deposited(address indexed user, uint256 indexed poolid, uint256 amount);
     event Withdrawn(address indexed user, uint256 indexed poolid, uint256 amount);
 
-    constructor(address _staker, address _minter, address _crv) {
+    constructor(address _staker, address _crv) {
         isShutdown = false;
         staker = _staker;
         owner = msg.sender;
         feeManager = msg.sender;
         poolManager = msg.sender;
-        treasury = address(0);
-        minter = _minter;
+        rescueManager = msg.sender;
         crv = _crv;
     }
 
@@ -81,6 +75,11 @@ contract Booster{
         poolManager = _poolM;
     }
 
+    function setRescueManager(address _rescueM) external {
+        require(msg.sender == owner, "!auth");
+        rescueManager = _rescueM;
+    }
+
     function setFactories(address _rfactory, address _tfactory) external {
         require(msg.sender == owner, "!auth");
         
@@ -88,32 +87,23 @@ contract Booster{
         tokenFactory = _tfactory;
     }
 
-    function setRewardContracts(address _cvxcrvRewards, address _cvxRewards) external {
+    function setFeeDeposit(address _deposit) external {
         require(msg.sender == owner, "!auth");
         
-        cvxcrvRewards = _cvxcrvRewards;
-        cvxRewards = _cvxRewards;
+        feeDeposit = _deposit;
     }
 
-    function setFees(uint256 _crvFees, uint256 _cvxFees, uint256 _platform) external{
+    function setFees(uint256 _platformFees) external{
         require(msg.sender==feeManager, "!auth");
+        require(_platformFees <= MaxFees, ">MaxFees");
 
-        uint256 total = _crvFees + _cvxFees + _platform;
-        require(total <= MaxFees, ">MaxFees");
-
-        //values must be within certain ranges     
-        if(_crvFees >= 1000 && _crvFees <= 1500
-            && _cvxFees >= 300 && _cvxFees <= 800
-            && _platform <= 500){
-            crvIncentive = _crvFees;
-            cvxIncentive = _cvxFees;
-            platformFee = _platform;
-        }
+        fees = _platformFees;
     }
 
-    function setTreasury(address _treasury) external {
-        require(msg.sender==feeManager, "!auth");
-        treasury = _treasury;
+    function rescueToken(address _token, address _to) external{
+        require(msg.sender==rescueManager, "!auth");
+
+        IStaker(staker).withdraw(_token, _to);
     }
 
     /// END SETTER SECTION ///
@@ -126,6 +116,7 @@ contract Booster{
     function addPool(address _lptoken, address _gauge) external returns(bool){
         require(msg.sender==poolManager && !isShutdown, "!add");
         require(_gauge != address(0) && _lptoken != address(0),"!param");
+        require(!gaugeMap[_gauge] && !gaugeMap[_lptoken],"gaugeMap");
 
         //the next pool's pid
         uint256 pid = poolInfo.length;
@@ -142,7 +133,6 @@ contract Booster{
                 token: token,
                 gauge: _gauge,
                 mainRewards: newRewardPool,
-                // stash: stash,
                 shutdown: false
             })
         );
@@ -158,10 +148,19 @@ contract Booster{
     function shutdownPool(uint256 _pid) external returns(bool){
         require(msg.sender==poolManager, "!auth");
         PoolInfo storage pool = poolInfo[_pid];
+        require(!pool.shutdown,"already shutdown");
+
+        uint256 lpbalance = IERC20(pool.lptoken).balanceOf(address(this));
 
         //withdraw from gauge
         try IStaker(staker).withdrawAll(pool.lptoken,pool.gauge){
         }catch{}
+
+        //lp difference
+        lpbalance = IERC20(pool.lptoken).balanceOf(address(this)) - lpbalance;
+        //record how many lp tokens were returned
+        shutdownBalances[_pid] = lpbalance;
+
 
         pool.shutdown = true;
         gaugeMap[pool.gauge] = false;
@@ -203,7 +202,7 @@ contract Booster{
         //stake
         address gauge = pool.gauge;
         require(gauge != address(0),"!gauge setting");
-        IStaker(staker).deposit(lptoken,gauge);
+        IStaker(staker).deposit(lptoken,gauge,_amount);
 
         address token = pool.token;
         if(_stake){
@@ -245,6 +244,13 @@ contract Booster{
         // if shutdown tokens will be in this contract
         if (!pool.shutdown) {
             IStaker(staker).withdraw(lptoken,gauge, _amount);
+        }else{
+            //remove from shutdown balances. revert if not enough
+            //would only revert if something was wrong with the pool
+            //and shutdown didnt return lp tokens
+            //thus this is a catch to stop other pools with same lp token from
+            //being affected
+            shutdownBalances[_pid] -= _amount;
         }
 
         //return lp tokens
@@ -283,40 +289,19 @@ contract Booster{
     }
 
     function calculatePlatformFees(uint256 _amount) external view returns(uint256){
-        uint256 _fees = _amount * (crvIncentive+cvxIncentive+platformFee) / FEE_DENOMINATOR;
+        uint256 _fees = _amount * fees / FEE_DENOMINATOR;
         return _fees;
     }
 
     //claim platform fees
-    function earmarkRewards() external {
+    function processFees() external {
         //crv balance: any crv on this contract is considered part of fees
         uint256 crvBal = IERC20(crv).balanceOf(address(this));
 
         if (crvBal > 0) {
-            //crv on this contract have already been reduced to fees only
-            //so divide appropriately between the three fee types
-            uint256 denominator = (crvIncentive+cvxIncentive+platformFee);
-            uint256 _crvIncentive = crvBal * crvIncentive / denominator;
-            uint256 _cvxIncentive = crvBal * cvxIncentive / denominator;
-            
-            //send treasury
-            if(treasury != address(0) && treasury != address(this) && platformFee > 0){
-                //only subtract after address condition check
-                uint256 _platform = crvBal * platformFee / denominator;
-                crvBal -= _platform;
-                IERC20(crv).safeTransfer(treasury, _platform);
-            }
-
-            //remove incentives from balance
-            crvBal -= _crvIncentive - _cvxIncentive;
-
-            //send cvxcrv share of crv to reward contract
-            IERC20(crv).safeTransfer(cvxcrvRewards, _crvIncentive);
-            IRewards(cvxcrvRewards).queueNewRewards(_crvIncentive);
-
-            //send cvx share of crv to reward contract
-            IERC20(crv).safeTransfer(cvxRewards, _cvxIncentive);
-            IRewards(cvxRewards).queueNewRewards(_cvxIncentive);
+            //send to a fee depositor that knows how to process
+            IERC20(crv).safeTransfer(feeDeposit, crvBal);
+            IFeeDistro(feeDeposit).onFeesClaimed();
         }
     }
 

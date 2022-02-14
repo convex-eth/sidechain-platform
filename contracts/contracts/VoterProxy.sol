@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.10;
 
-import "./interfaces/IFeeDistro.sol";
 import "./interfaces/IDeposit.sol";
 import "./interfaces/IGauge.sol";
 import "./interfaces/IVoting.sol";
@@ -18,7 +17,7 @@ contract FraxVoterProxy {
     address public operator;
     address public depositor;
     
-    mapping (address => bool) private stashPool;
+    // mapping (address => bool) private stashPool;
     mapping (address => bool) private protectedTokens;
 
     constructor(address _crv){
@@ -48,15 +47,15 @@ contract FraxVoterProxy {
         depositor = _depositor;
     }
 
-    function setStashAccess(address _stash, bool _status) external returns(bool){
-        require(msg.sender == owner, "!auth");
-        if(_stash != address(0)){
-            stashPool[_stash] = _status;
-        }
-        return true;
-    }
+    // function setStashAccess(address _stash, bool _status) external returns(bool){
+    //     require(msg.sender == owner, "!auth");
+    //     if(_stash != address(0)){
+    //         stashPool[_stash] = _status;
+    //     }
+    //     return true;
+    // }
 
-    function deposit(address _token, address _gauge) external returns(bool){
+    function deposit(address _token, address _gauge, uint256 _amount) external returns(bool){
         require(msg.sender == operator, "!auth");
         if(protectedTokens[_token] == false){
             protectedTokens[_token] = true;
@@ -64,18 +63,17 @@ contract FraxVoterProxy {
         if(protectedTokens[_gauge] == false){
             protectedTokens[_gauge] = true;
         }
-        uint256 balance = IERC20(_token).balanceOf(address(this));
-        if (balance > 0) {
-            IERC20(_token).safeApprove(_gauge, 0);
-            IERC20(_token).safeApprove(_gauge, balance);
-            IGauge(_gauge).deposit(balance);
+        // uint256 balance = IERC20(_token).balanceOf(address(this));
+        if (_amount > 0) {
+            IERC20(_token).approve(_gauge, _amount);
+            IGauge(_gauge).deposit(_amount);
         }
         return true;
     }
 
-    //stash only function for pulling extra incentive reward tokens out
-    function withdraw(IERC20 _asset) external returns (uint256 balance) {
-        require(stashPool[msg.sender] == true, "!auth");
+    //function for rescuing tokens that are NOT lp or gauge tokens
+    function withdraw(IERC20 _asset, address _to) external returns (uint256 balance) {
+        require(msg.sender == operator, "!auth");
 
         //check protection
         if(protectedTokens[address(_asset)] == true){
@@ -83,7 +81,7 @@ contract FraxVoterProxy {
         }
 
         balance = _asset.balanceOf(address(this));
-        _asset.safeTransfer(msg.sender, balance);
+        _asset.safeTransfer(_to, balance);
         return balance;
     }
 
@@ -101,7 +99,7 @@ contract FraxVoterProxy {
 
      function withdrawAll(address _token, address _gauge) external returns(bool){
         require(msg.sender == operator, "!auth");
-        uint256 amount = balanceOfPool(_gauge) + IERC20(_token).balanceOf(address(this));
+        uint256 amount = balanceOfPool(_gauge);
         withdraw(_token, _gauge, amount);
         return true;
     }
@@ -116,19 +114,6 @@ contract FraxVoterProxy {
         IGauge(_gauge).claim_rewards();
         return true;
     }
-
-    function checkpointFeeRewards(address _distroContract) external{
-        require(msg.sender == depositor || msg.sender == operator, "!auth");
-        IFeeDistro(_distroContract).checkpoint();
-    }
-
-    function claimFees(address _distroContract, address _token) external returns (uint256){
-        require(msg.sender == operator, "!auth");
-        IFeeDistro(_distroContract).getYield();
-        uint256 _balance = IERC20(_token).balanceOf(address(this));
-        IERC20(_token).safeTransfer(operator, _balance);
-        return _balance;
-    }    
 
     function balanceOfPool(address _gauge) public view returns (uint256) {
         return IGauge(_gauge).balanceOf(address(this));
