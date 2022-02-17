@@ -243,7 +243,9 @@ contract Booster{
         //pull from gauge if not shutdown
         // if shutdown tokens will be in this contract
         if (!pool.shutdown) {
-            IStaker(staker).withdraw(lptoken,gauge, _amount);
+            uint256 lpbalance = IERC20(lptoken).balanceOf(address(this));
+            IStaker(staker).withdraw(lptoken, gauge, _amount);
+            require(IERC20(lptoken).balanceOf(address(this)) - lpbalance >= _amount, "withdraw amount fail");
         }else{
             //remove from shutdown balances. revert if not enough
             //would only revert if something was wrong with the pool

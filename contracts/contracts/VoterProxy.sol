@@ -47,14 +47,6 @@ contract FraxVoterProxy {
         depositor = _depositor;
     }
 
-    // function setStashAccess(address _stash, bool _status) external returns(bool){
-    //     require(msg.sender == owner, "!auth");
-    //     if(_stash != address(0)){
-    //         stashPool[_stash] = _status;
-    //     }
-    //     return true;
-    // }
-
     function deposit(address _token, address _gauge, uint256 _amount) external returns(bool){
         require(msg.sender == operator, "!auth");
         if(protectedTokens[_token] == false){
@@ -88,11 +80,8 @@ contract FraxVoterProxy {
     // Withdraw partial funds
     function withdraw(address _token, address _gauge, uint256 _amount) public returns(bool){
         require(msg.sender == operator, "!auth");
-        uint256 _balance = IERC20(_token).balanceOf(address(this));
-        if (_balance < _amount) {
-            _amount = _withdrawSome(_gauge, _amount - _balance);
-            _amount = _amount + _balance;
-        }
+
+        IGauge(_gauge).withdraw(_amount);
         IERC20(_token).safeTransfer(msg.sender, _amount);
         return true;
     }
@@ -102,11 +91,6 @@ contract FraxVoterProxy {
         uint256 amount = balanceOfPool(_gauge);
         withdraw(_token, _gauge, amount);
         return true;
-    }
-
-    function _withdrawSome(address _gauge, uint256 _amount) internal returns (uint256) {
-        IGauge(_gauge).withdraw(_amount);
-        return _amount;
     }
 
     function claimRewards(address _gauge) external returns(bool){
