@@ -4,6 +4,7 @@ pragma solidity 0.8.10;
 import "./interfaces/IDeposit.sol";
 import "./interfaces/IGauge.sol";
 import "./interfaces/IVoting.sol";
+import "./interfaces/ICrvMinter.sol";
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
@@ -91,6 +92,20 @@ contract FraxVoterProxy {
         uint256 amount = balanceOfPool(_gauge);
         withdraw(_token, _gauge, amount);
         return true;
+    }
+
+    function claimCrv(address _minter, address _gauge, address _to) external returns(uint256){
+        require(msg.sender == operator, "!auth");
+        
+        uint256 _balance = IERC20(crv).balanceOf(address(this));
+        //try mint
+        try ICrvMinter(_minter).mint(_gauge){
+            _balance = IERC20(crv).balanceOf(address(this)) - _balance;
+            //only transfer balance that was minted
+            IERC20(crv).safeTransfer(_to, _balance);
+        }catch{}
+
+        return _balance;
     }
 
     function claimRewards(address _gauge) external returns(bool){

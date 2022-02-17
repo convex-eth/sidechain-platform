@@ -15,6 +15,7 @@ contract Booster{
     using SafeERC20 for IERC20;
 
     address public immutable crv;
+    address public immutable crvMinter;
 
     uint256 public fees = 1700; //platform fees
     uint256 public constant MaxFees = 2500;
@@ -47,7 +48,7 @@ contract Booster{
     event Deposited(address indexed user, uint256 indexed poolid, uint256 amount);
     event Withdrawn(address indexed user, uint256 indexed poolid, uint256 amount);
 
-    constructor(address _staker, address _crv) {
+    constructor(address _staker, address _crv, address _crvMinter) {
         isShutdown = false;
         staker = _staker;
         owner = msg.sender;
@@ -55,6 +56,7 @@ contract Booster{
         poolManager = msg.sender;
         rescueManager = msg.sender;
         crv = _crv;
+        crvMinter = _crvMinter;
     }
 
 
@@ -284,6 +286,14 @@ contract Booster{
 
         _withdraw(_pid,_amount,msg.sender,_to);
         return true;
+    }
+
+    function claimCrv(uint256 _pid, address _gauge) external{
+        address rewardContract = poolInfo[_pid].rewards;
+        require(msg.sender == rewardContract,"!auth");
+
+        //claim crv to rewards
+        IStaker(staker).claimCrv(crvMinter, _gauge, rewardContract);
     }
 
     function setGaugeRedirect(address _gauge, address _rewards) internal returns(bool){

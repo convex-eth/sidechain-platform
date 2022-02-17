@@ -77,6 +77,8 @@ contract ConvexRewardPool {
         convexBooster = _convexBooster;
         convexToken = _convexToken;
         convexPoolId = _poolId;
+
+        _insertRewardToken(_crv);
     }
 
     function updateRewardList() public {
@@ -87,12 +89,7 @@ contract ConvexRewardPool {
             if(rewardToken == address(0)) break;
 
             //add to reward list if new
-            if(!rewardMap[rewardToken]){
-                RewardType storage r = rewards.push();
-                r.reward_token = rewardToken;
-                rewardMap[rewardToken] = true;
-                emit RewardAdded(rewardToken);
-            }
+            _insertRewardToken(rewardToken);
         }
     }
 
@@ -102,6 +99,12 @@ contract ConvexRewardPool {
         //owner of booster can set extra rewards
         require(IDeposit(convexBooster).owner() == msg.sender, "!owner");
         
+        //add to reward list
+        _insertRewardToken(_token);
+    }
+
+    function _insertRewardToken(address _token) internal{
+        //add to reward list if new
         if(!rewardMap[_token]){
             RewardType storage r = rewards.push();
             r.reward_token = _token;
@@ -119,6 +122,9 @@ contract ConvexRewardPool {
     function updateRewardsAndClaim() internal{
         //make sure reward list is up to date
         updateRewardList();
+
+        //claim crv
+        IDeposit(convexBooster).claimCrv(convexPoolId, curveGauge);
 
         //claim rewards from gauge
         IGauge(curveGauge).claim_rewards(convexStaker);
