@@ -35,7 +35,7 @@ contract Booster{
         address lptoken;
         address token;
         address gauge;
-        address mainRewards;
+        address rewards;
         bool shutdown;
     }
 
@@ -124,7 +124,7 @@ contract Booster{
         //create a tokenized deposit
         address token = ITokenFactory(tokenFactory).CreateDepositToken(_lptoken);
         //create a reward contract for rewards
-        address newRewardPool = IRewardFactory(rewardFactory).CreateMainRewards(_gauge,token,pid);
+        address newRewardPool = IRewardFactory(rewardFactory).CreateRewards(_gauge,token,pid);
 
         //add the new pool
         poolInfo.push(
@@ -132,7 +132,7 @@ contract Booster{
                 lptoken: _lptoken,
                 token: token,
                 gauge: _gauge,
-                mainRewards: newRewardPool,
+                rewards: newRewardPool,
                 shutdown: false
             })
         );
@@ -140,6 +140,11 @@ contract Booster{
 
         //set gauge redirect
         setGaugeRedirect(_gauge, newRewardPool);
+
+        //allow booster to stake to the reward pool
+        //safe because deposit token is only ever on this booster contract
+        //when deposit is a "depost and stake". there should be no free floating deposit tokens
+        IERC20(token).approve(newRewardPool, type(uint256).max);
 
         return true;
     }
@@ -208,10 +213,7 @@ contract Booster{
         if(_stake){
             //mint here and send to rewards on user behalf
             ITokenMinter(token).mint(address(this),_amount);
-            address rewardContract = pool.mainRewards;
-            IERC20(token).safeApprove(rewardContract,0);
-            IERC20(token).safeApprove(rewardContract,_amount);
-            IRewards(rewardContract).stakeFor(msg.sender,_amount);
+            IRewards(pool.rewards).stakeFor(msg.sender,_amount);
         }else{
             //add user balance directly
             ITokenMinter(token).mint(msg.sender,_amount);
@@ -277,7 +279,7 @@ contract Booster{
 
     //allow reward contracts to send here and withdraw to user
     function withdrawTo(uint256 _pid, uint256 _amount, address _to) external returns(bool){
-        address rewardContract = poolInfo[_pid].mainRewards;
+        address rewardContract = poolInfo[_pid].rewards;
         require(msg.sender == rewardContract,"!auth");
 
         _withdraw(_pid,_amount,msg.sender,_to);
