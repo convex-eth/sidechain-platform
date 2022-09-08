@@ -20,8 +20,8 @@
 
 const HDWalletProvider = require('@truffle/hdwallet-provider');
 const fs = require('fs');
-// const mnemonic = fs.readFileSync(".secret").toString().trim();
-const mnemonic = "";
+var jsonfile = require('jsonfile');
+var api_keys = jsonfile.readFileSync('./.api_keys');
 
 module.exports = {
   /**
@@ -42,38 +42,28 @@ module.exports = {
     // options below to some value.
     //
     mainnet: {
-      provider: () => new HDWalletProvider(mnemonic, `https://mainnet.infura.io/v3/<insert>`),
+      // provider: () => new HDWalletProvider(mnemonic, `https://mainnet.infura.io/v3/<insert>`),
+      provider: () => new HDWalletProvider(api_keys.mnemonic, api_keys.provider_mainnet),
       network_id: 1, 
       gas: 6721975,
       gasPrice: 85000000000
     },
-    bsc: {
-      provider: () => new HDWalletProvider(mnemonic, `https://bsc-dataseed1.binance.org`),
-      network_id: 56,
-      confirmations: 10,
-      timeoutBlocks: 200,
-      skipDryRun: true,
+    mainnetArb: {
+      provider: () => new HDWalletProvider(api_keys.mnemonic, api_keys.provider_arbitrum),
+      network_id: 1, 
       gas: 6721975,
-      gasPrice: 10000000000
+      gasPrice: 85000000000
     },
-    debugbsc: {
+    mainnetOp: {
+      provider: () => new HDWalletProvider(api_keys.mnemonic, api_keys.provider_optimism),
+      network_id: 1, 
+      gas: 6721975,
+      gasPrice: 85000000000
+    },
+    debugArb: {
       host: "127.0.0.1",
       port: 8545,
-      network_id: "56",
-      gas: 6721975,
-      gasPrice: 100000000000
-    },
-    ganachecli: {
-      host: "127.0.0.1",
-      port: 8545,
-      network_id: "1",
-      gas: 6721975,
-      gasPrice: 100000000000
-    },
-    uitest: {
-      host: "127.0.0.1",
-      port: 8545,
-      network_id: "1",
+      network_id: "42161",
       gas: 6721975,
       gasPrice: 100000000000
     },
@@ -105,5 +95,11 @@ module.exports = {
       //  evmVersion: "byzantium"
       }
     }
+  },
+  plugins: [
+    'truffle-plugin-verify'
+  ],
+  api_keys: {
+    etherscan: api_keys.etherscan
   }
 };

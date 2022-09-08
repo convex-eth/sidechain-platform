@@ -25,6 +25,7 @@ contract Booster{
     address public feeManager;
     address public poolManager;
     address public rescueManager;
+    address public rewardManager;
     address public immutable staker;
     address public rewardFactory;
     address public tokenFactory;
@@ -55,6 +56,7 @@ contract Booster{
         feeManager = msg.sender;
         poolManager = msg.sender;
         rescueManager = msg.sender;
+        rewardManager = msg.sender;
         crv = _crv;
         crvMinter = _crvMinter;
     }
@@ -80,6 +82,11 @@ contract Booster{
     function setRescueManager(address _rescueM) external {
         require(msg.sender == owner, "!auth");
         rescueManager = _rescueM;
+    }
+
+    function setRewardManager(address _rewardM) external {
+        require(msg.sender == owner, "!auth");
+        rewardManager = _rewardM;
     }
 
     function setFactories(address _rfactory, address _tfactory) external {
