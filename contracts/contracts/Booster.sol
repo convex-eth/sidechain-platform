@@ -7,6 +7,7 @@ import "./interfaces/IRewardFactory.sol";
 import "./interfaces/IStaker.sol";
 import "./interfaces/ITokenMinter.sol";
 import "./interfaces/IFeeDistro.sol";
+import "./interfaces/IPoolFactory.sol";
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
@@ -15,7 +16,6 @@ contract Booster{
     using SafeERC20 for IERC20;
 
     address public immutable crv;
-    address public immutable crvMinter;
 
     uint256 public fees = 1700; //platform fees
     uint256 public constant MaxFees = 2500;
@@ -39,6 +39,7 @@ contract Booster{
         address gauge;
         address rewards;
         bool shutdown;
+        address factory;
     }
 
     //index(pid) -> pool
@@ -49,7 +50,7 @@ contract Booster{
     event Deposited(address indexed user, uint256 indexed poolid, uint256 amount);
     event Withdrawn(address indexed user, uint256 indexed poolid, uint256 amount);
 
-    constructor(address _staker, address _crv, address _crvMinter) {
+    constructor(address _staker, address _crv) {
         isShutdown = false;
         staker = _staker;
         owner = msg.sender;
@@ -58,7 +59,6 @@ contract Booster{
         rescueManager = msg.sender;
         rewardManager = msg.sender;
         crv = _crv;
-        crvMinter = _crvMinter;
     }
 
 
@@ -122,10 +122,13 @@ contract Booster{
     }
 
     //create a new pool
-    function addPool(address _lptoken, address _gauge) external returns(bool){
+    function addPool(address _lptoken, address _gauge, address _factory) external returns(bool){
         require(msg.sender==poolManager && !isShutdown, "!add");
-        require(_gauge != address(0) && _lptoken != address(0),"!param");
+        require(_gauge != address(0) && _lptoken != address(0) && _factory != address(0),"!param");
         require(!gaugeMap[_gauge] && !gaugeMap[_lptoken],"gaugeMap");
+
+        //check that the given factory is indeed tied with the gauge
+        require(IPoolFactory(_factory).is_valid_gauge(_gauge),"!factory gauge");
 
         //the next pool's pid
         uint256 pid = poolInfo.length;
@@ -133,7 +136,9 @@ contract Booster{
         //create a tokenized deposit
         address token = ITokenFactory(tokenFactory).CreateDepositToken(_lptoken);
         //create a reward contract for rewards
-        address newRewardPool = IRewardFactory(rewardFactory).CreateRewards(_gauge,token,pid);
+        address newRewardPool = IRewardFactory(rewardFactory).CreateMainRewards(_gauge,token,pid);
+
+
 
         //add the new pool
         poolInfo.push(
@@ -142,7 +147,8 @@ contract Booster{
                 token: token,
                 gauge: _gauge,
                 rewards: newRewardPool,
-                shutdown: false
+                shutdown: false,
+                factory: _factory
             })
         );
         gaugeMap[_gauge] = true;
@@ -300,7 +306,7 @@ contract Booster{
         require(msg.sender == rewardContract,"!auth");
 
         //claim crv to rewards
-        IStaker(staker).claimCrv(crvMinter, _gauge, rewardContract);
+        IStaker(staker).claimCrv(poolInfo[_pid].factory, _gauge, rewardContract);
     }
 
     function setGaugeRedirect(address _gauge, address _rewards) internal returns(bool){

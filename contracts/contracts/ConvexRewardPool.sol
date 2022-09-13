@@ -32,7 +32,6 @@ contract ConvexRewardPool {
 
     //pool and system info
     address public curveGauge;
-    address public convexStash;
     address public convexStaker;
     address public convexBooster;
     address public convexToken;
@@ -44,7 +43,6 @@ contract ConvexRewardPool {
     mapping(address => mapping(address => uint256)) public reward_integral_for;
     mapping(address => mapping(address => uint256)) public claimable_reward;
     mapping(address => bool) public rewardMap;
-    uint256 public stashRewardIndex;
     address public rewardHook;
     address public crv;
 
@@ -72,7 +70,6 @@ contract ConvexRewardPool {
         isInit = true;
         crv = _crv;
         curveGauge = _curveGauge;
-        // convexStash = _convexStash;
         convexStaker = _convexStaker;
         convexBooster = _convexBooster;
         convexToken = _convexToken;

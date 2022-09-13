@@ -18,5 +18,8 @@
     "chai": "^4.3.4",
     "jsonfile": "^6.1.0",
     "openzeppelin-test-helpers": "^0.5.1"
+  },
+  "devDependencies": {
+    "truffle-plugin-verify": "^0.5.28"
   }
 }
