@@ -1,25 +1,27 @@
 {
-    "system": {
-        "voteProxy": "0x989AEb4d175e16225E39E87d0D97A3360524AD80",
-        "booster": ""
-    },
-    "curve_arb":{
-        "stablePoolFactory":"",
-        "cryptoPoolFactory":"0xabC000d88f23Bb45525E447528DBF656A9D55bf5",
-        "crv":"0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978",
-        "veOracle": "0x44c7a35Ecb0Cf37A3d6FB38b4085D9328658E01d"
-    },
-    "pools_arb": [
-        {
-            "lptoken": "",
-            "token": "",
-            "gauge": "",
-            "crvRewards": "",
-            "stash": "",
-            "swap": "",
-            "currency": "USD",
-            "name": "",
-            "id": 0
-        }
-    ]
+    "arbitrum" : {
+        "system": {
+            "voteProxy": "0x989AEb4d175e16225E39E87d0D97A3360524AD80",
+            "booster": ""
+        },
+        "curve":{
+            "stablePoolFactory":"",
+            "cryptoPoolFactory":"0xabC000d88f23Bb45525E447528DBF656A9D55bf5",
+            "crv":"0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978",
+            "veOracle": "0x44c7a35Ecb0Cf37A3d6FB38b4085D9328658E01d"
+        },
+        "pools": [
+            {
+                "lptoken": "",
+                "token": "",
+                "gauge": "",
+                "crvRewards": "",
+                "stash": "",
+                "swap": "",
+                "currency": "USD",
+                "name": "",
+                "id": 0
+            }
+        ]
+    }
 }

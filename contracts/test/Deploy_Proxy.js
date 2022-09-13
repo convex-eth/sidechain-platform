@@ -26,17 +26,17 @@ const unlockAccount = async (address) => {
 };
 
 
-const getChainCrv = () => {
+const getChainContracts = () => {
   let NETWORK = config.network;//process.env.NETWORK;
   console.log("network: " +NETWORK);
-  var crv = "";
+  var contracts = {};
 
   if(NETWORK == "debugArb"){
-    crv = contractList.curve_arb.crv;
+    contracts = contractList.arbitrum;
   }
 
-  console.log("using crv: " +crv);
-  return crv;
+  console.log("using crv: " +contracts.curve.crv);
+  return contracts;
 }
 
 
@@ -60,7 +60,8 @@ contract("Deploy Proxy", async accounts => {
     userNames[userD] = "D";
     userNames[userZ] = "Z";
 
-    let crv = getChainCrv();
+    let chainContracts = getChainContracts();
+    let crv = chainContracts.curve.crv;
 
     //send deployer eth
     await web3.eth.sendTransaction({from:userA, to:deployer, value:web3.utils.toWei("10.0", "ether") });

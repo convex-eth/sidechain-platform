@@ -217,38 +217,13 @@ contract ConvexRewardPool {
         return _balances[account];
     }
 
-    //view version of earned(). doesnt not include rewards waiting on the gauge's rewarder 
-    function earnedView(address _account) external view returns(EarnedData[] memory claimable) {
-
-        uint256 rewardCount = rewards.length;
-        claimable = new EarnedData[](rewardCount + 1);
-
-        for (uint256 i = 0; i < rewardCount; i++) {
-            RewardType storage reward = rewards[i];
-
-            //change in reward is current balance - remaining reward + earned
-            uint256 bal = IERC20(reward.reward_token).balanceOf(address(this));
-            uint256 d_reward = bal - reward.reward_remaining;
-            d_reward = d_reward + IGauge(curveGauge).claimable_reward(convexStaker, reward.reward_token);
-
-            uint256 I = reward.reward_integral;
-            if (_totalSupply > 0) {
-                I = I + (d_reward * 1e20 / _totalSupply);
-            }
-
-            uint256 newlyClaimable = _balances[_account] * (I - reward_integral_for[reward.reward_token][_account]) / 1e20;
-            claimable[i].amount = claimable_reward[reward.reward_token][_account] + newlyClaimable;
-            claimable[i].token = reward.reward_token;
-        }
-        return claimable;
-    }
-
-    //get earned info using a write function to also include rewards currently waiting on the gauge's rewarder
+    //get earned token info
+    //Note: The curve gauge function "claimable_tokens" is a write function and thus this is not by default a view
     //change ABI to view to use this off chain
     function earned(address _account) external returns(EarnedData[] memory claimable) {
 
         uint256 rewardCount = rewards.length;
-        claimable = new EarnedData[](rewardCount + 1);
+        claimable = new EarnedData[](rewardCount);
 
         for (uint256 i = 0; i < rewardCount; i++) {
             RewardType storage reward = rewards[i];
@@ -256,7 +231,17 @@ contract ConvexRewardPool {
             //change in reward is current balance - remaining reward + earned
             uint256 bal = IERC20(reward.reward_token).balanceOf(address(this));
             uint256 d_reward = bal - reward.reward_remaining;
-            d_reward = d_reward + IGauge(curveGauge).claimable_reward_write(convexStaker, reward.reward_token);
+            // crv is always slot 0. while unlikely, if crv was also added as a reward token checking by address would cause it to be skipped
+            if(i == 0){
+                uint256 camount = IGauge(curveGauge).claimable_tokens(convexStaker);
+                uint256 fees = IDeposit(convexBooster).calculatePlatformFees(camount);
+                if(fees > 0){
+                    camount -= fees;
+                }
+                d_reward = d_reward + camount;
+            }else{
+                d_reward = d_reward + IGauge(curveGauge).claimable_reward(convexStaker, reward.reward_token);
+            }
 
             uint256 I = reward.reward_integral;
             if (_totalSupply > 0) {

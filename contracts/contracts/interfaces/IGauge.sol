@@ -13,5 +13,6 @@ interface IGauge {
     function set_rewards_receiver(address _receiver) external;
     function claimed_reward(address _account, address _token) external view returns(uint256);
     function claimable_reward(address _account, address _token) external view returns(uint256);
-    function claimable_reward_write(address _account, address _token) external returns(uint256);
+    function claimable_tokens(address _account) external returns(uint256);
+    // function claimable_reward_write(address _account, address _token) external returns(uint256);
 }

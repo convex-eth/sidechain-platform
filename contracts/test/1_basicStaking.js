@@ -34,19 +34,25 @@ const unlockAccount = async (address) => {
 };
 
 
-const getChainCrv = () => {
+const getChainContracts = () => {
   let NETWORK = config.network;//process.env.NETWORK;
   console.log("network: " +NETWORK);
-  var crv = "";
+  var contracts = {};
 
   if(NETWORK == "debugArb"){
-    crv = contractList.curve_arb.crv;
+    contracts = contractList.arbitrum;
   }
 
-  console.log("using crv: " +crv);
-  return crv;
+  console.log("using crv: " +contracts.curve.crv);
+  return contracts;
 }
 
+const advanceTime = async (secondsElaspse) => {
+  await time.increase(secondsElaspse);
+  await time.advanceBlock();
+  console.log("\n  >>>>  advance time " +(secondsElaspse/86400) +" days  >>>>\n");
+}
+const day = 86400;
 
 contract("Deploy Proxy", async accounts => {
   it("should deploy contracts", async () => {
@@ -68,7 +74,8 @@ contract("Deploy Proxy", async accounts => {
     userNames[userD] = "D";
     userNames[userZ] = "Z";
 
-    let crv = getChainCrv();
+    let chainContracts = getChainContracts();
+    let crv = await IERC20.at(chainContracts.curve.crv);
 
     //send deployer eth
     await web3.eth.sendTransaction({from:userA, to:deployer, value:web3.utils.toWei("10.0", "ether") });
@@ -80,7 +87,7 @@ contract("Deploy Proxy", async accounts => {
     var usingproxy;
     var found = false;
     while(!found){
-      var newproxy = await VoterProxy.new(crv,{from:deployer});
+      var newproxy = await VoterProxy.new(crv.address,{from:deployer});
       console.log("deployed proxy to " +newproxy.address);
       if(newproxy.address.toLowerCase() == voteproxy.toLowerCase()){
         found=true;
@@ -92,7 +99,7 @@ contract("Deploy Proxy", async accounts => {
     console.log("using proxy: " +usingproxy.address);
 
     //deploy booster
-    let booster = await Booster.new(usingproxy.address, crv,{from:deployer});
+    let booster = await Booster.new(usingproxy.address, crv.address,{from:deployer});
     console.log("booster at: " +booster.address);
 
     //set proxy operator
@@ -112,7 +119,7 @@ contract("Deploy Proxy", async accounts => {
     await tokenFactory.setImplementation(tokenImp.address,{from:deployer});
     console.log("token impl set");
 
-    let rewardFactory = await RewardFactory.new(booster.address, usingproxy.address, crv, pfactory.address,{from:deployer});
+    let rewardFactory = await RewardFactory.new(booster.address, usingproxy.address, crv.address, pfactory.address,{from:deployer});
     console.log("reward factory at: " +rewardFactory.address);
 
     let rewardImp = await ConvexRewardPool.new({from:deployer});
@@ -175,10 +182,11 @@ contract("Deploy Proxy", async accounts => {
 
     console.log("\n\n --- pool initialized ----");
 
-
     ////  user staking
 
     console.log("\n\n >>>> simulate staking >>>>");
+    await crv.balanceOf(userA).then(a=>console.log("crv on wallet: " +a))
+
     //transfer lp tokens
     let lpHolder = "0x555766f3da968ecbefa690ffd49a2ac02f47aa5f";
     await unlockAccount(lpHolder);
@@ -187,6 +195,28 @@ contract("Deploy Proxy", async accounts => {
 
     var lpbalance = await curvelp.balanceOf(userA);
     console.log("lp balance: " +lpbalance);
+
+    await curvelp.approve(booster.address,web3.utils.toWei("1000000.0", "ether"), {from:userA} );
+    console.log("approved lp to booster");
+
+    await booster.depositAll(0, true, {from:userA});
+    console.log("deposit and staked in booster");
+
+    await rpool.balanceOf(userA).then(a=>console.log("balance in rewards: " +a))
+    await rpool.totalSupply().then(a=>console.log("totalSupply = " +a));
+
+    // await rpool.getReward(userA, {from:userA});
+    // console.log("claimed");
+    await crv.balanceOf(userA).then(a=>console.log("crv on wallet: " +a))
+
+    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+    await advanceTime(day*3);
+    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+
+    await rpool.getReward(userA, {from:userA});
+    console.log("claimed");
+
+    await crv.balanceOf(userA).then(a=>console.log("crv on wallet: " +a))
 
     return;
   });
