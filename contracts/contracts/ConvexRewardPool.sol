@@ -52,8 +52,8 @@ contract ConvexRewardPool {
     //events
     event Staked(address indexed _user, uint256 _amount);
     event Withdrawn(address indexed _user, uint256 _amount);
-    event RewardPaid(address indexed user, uint256 reward);
-    event RewardAdded(address indexed reward);
+    event RewardPaid(address indexed _user, address indexed _rewardToken, address indexed _receiver, uint256 _rewardAmount);
+    event RewardAdded(address indexed _rewardToken);
 
     constructor(){}
 
@@ -137,7 +137,7 @@ contract ConvexRewardPool {
         return rewards.length;
     }
 
-    function _calcRewardIntegral(uint256 _index, address _account, bool _isClaim) internal{
+    function _calcRewardIntegral(uint256 _index, address _account, address _forwardTo) internal{
         RewardType storage reward = rewards[_index];
 
         //get difference in balance and remaining rewards
@@ -162,13 +162,14 @@ contract ConvexRewardPool {
         //update user integrals
         // uint userI = reward.reward_integral_for[_account];
         uint userI = reward_integral_for[reward.reward_token][_account];
-        if(_isClaim || userI < reward.reward_integral){
-            if(_isClaim){
+        if(_forwardTo != address(0) || userI < reward.reward_integral){
+            //forward to address non-zero means its a claim 
+            if(_forwardTo != address(0)){
                 uint256 receiveable = claimable_reward[reward.reward_token][_account] + (_balances[_account] * uint256(reward.reward_integral - userI) / 1e20);
                 if(receiveable > 0){
                     claimable_reward[reward.reward_token][_account] = 0;
-                    IERC20(reward.reward_token).safeTransfer(_account, receiveable);
-                    emit RewardPaid(_account, receiveable);
+                    IERC20(reward.reward_token).safeTransfer(_forwardTo, receiveable);
+                    emit RewardPaid(_account, reward.reward_token, _forwardTo, receiveable);
                     bal -= receiveable;
                 }
             }else{
@@ -190,17 +191,17 @@ contract ConvexRewardPool {
 
         uint256 rewardCount = rewards.length;
         for (uint256 i = 0; i < rewardCount; i++) {
-           _calcRewardIntegral(i,_account,false);
+           _calcRewardIntegral(i,_account,address(0));
         }
     }
 
-    function _checkpointAndClaim(address _account) internal {
+    function _checkpointAndClaim(address _account, address _forwardTo) internal {
         //update rewards and claim
         updateRewardsAndClaim();
 
         uint256 rewardCount = rewards.length;
         for (uint256 i = 0; i < rewardCount; i++) {
-           _calcRewardIntegral(i,_account,true);
+           _calcRewardIntegral(i,_account,_forwardTo);
         }
     }
 
@@ -255,9 +256,18 @@ contract ConvexRewardPool {
         return claimable;
     }
 
+    //claim reward for given account (unguarded)
     function getReward(address _account) external {
         //claim directly in checkpoint logic to save a bit of gas
-        _checkpointAndClaim(_account);
+        _checkpointAndClaim(_account, _account);
+    }
+
+    //claim reward for given account and forward (guarded)
+    function getReward(address _account, address _forwardTo) external {
+        require(msg.sender == _account, "!self");
+        //claim directly in checkpoint logic to save a bit of gas
+        //pack forwardTo into account array to save gas so that a proxy etc doesnt have to double transfer
+        _checkpointAndClaim(_account,_forwardTo);
     }
 
     //Deposit/Stake
@@ -306,7 +316,7 @@ contract ConvexRewardPool {
         require(amount > 0, 'RewardPool : Cannot withdraw 0');
 
         if(claim){
-            _checkpointAndClaim(msg.sender);
+            _checkpointAndClaim(msg.sender, msg.sender);
         }else{
             _checkpoint(msg.sender);
         }
@@ -328,7 +338,7 @@ contract ConvexRewardPool {
     function withdrawAndUnwrap(uint256 amount, bool claim) public returns(bool){
 
         if(claim){
-            _checkpointAndClaim(msg.sender);
+            _checkpointAndClaim(msg.sender, msg.sender);
         }else{
             _checkpoint(msg.sender);
         }

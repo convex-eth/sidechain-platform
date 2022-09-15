@@ -15,11 +15,15 @@ contract VoterProxy {
     address public immutable crv;
     
     address public owner;
+    address public pendingOwner;
     address public operator;
     address public depositor;
     
     // mapping (address => bool) private stashPool;
     mapping (address => bool) private protectedTokens;
+
+    event SetPendingOwner(address indexed _address);
+    event OwnerChanged(address indexed _address);
 
     constructor(address _crv){
         crv = _crv;
@@ -30,9 +34,20 @@ contract VoterProxy {
         return "ConvexProxy";
     }
 
-    function setOwner(address _owner) external {
+    //set next owner
+    function setPendingOwner(address _po) external {
         require(msg.sender == owner, "!auth");
-        owner = _owner;
+        pendingOwner = _po;
+        emit SetPendingOwner(_po);
+    }
+
+    //claim ownership
+    function acceptPendingOwner() external {
+        require(pendingOwner != address(0) && msg.sender == pendingOwner, "!p_owner");
+
+        owner = pendingOwner;
+        pendingOwner = address(0);
+        emit OwnerChanged(owner);
     }
 
     function setOperator(address _operator) external {
@@ -65,7 +80,7 @@ contract VoterProxy {
     }
 
     //function for rescuing tokens that are NOT lp or gauge tokens
-    function withdraw(IERC20 _asset, address _to) external returns (uint256 balance) {
+    function rescue(IERC20 _asset, address _to) external returns (uint256 balance) {
         require(msg.sender == operator, "!auth");
 
         //check protection

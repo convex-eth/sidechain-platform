@@ -10,6 +10,8 @@ const TokenFactory = artifacts.require("TokenFactory");
 const RewardFactory = artifacts.require("RewardFactory");
 const DepositToken = artifacts.require("DepositToken");
 const ConvexRewardPool = artifacts.require("ConvexRewardPool");
+const FeeDeposit = artifacts.require("FeeDeposit");
+
 const IERC20 = artifacts.require("IERC20");
 const ERC20 = artifacts.require("ERC20");
 
@@ -54,8 +56,8 @@ const advanceTime = async (secondsElaspse) => {
 }
 const day = 86400;
 
-contract("Deploy Proxy", async accounts => {
-  it("should deploy contracts", async () => {
+contract("Deploy System and test staking/rewards", async accounts => {
+  it("should deploy contracts and test various functions", async () => {
 
     let deployer = "0x947B7742C403f20e5FaCcDAc5E092C943E7D0277";
     let multisig = "0xa3C5A1e09150B75ff251c1a7815A07182c3de2FB";
@@ -129,6 +131,11 @@ contract("Deploy Proxy", async accounts => {
 
     await booster.setFactories(rewardFactory.address, tokenFactory.address,{from:deployer});
     console.log("booster factories set");
+
+    let feedeposit = await FeeDeposit.new(deployer, crv.address);
+    console.log("fee deposit at: " +feedeposit.address);
+    await booster.setFeeDeposit(feedeposit.address, {from:deployer});
+    console.log("fee deposit set on booster");
 
     console.log("\n\n --- deployed ----")
 
@@ -210,13 +217,42 @@ contract("Deploy Proxy", async accounts => {
     await crv.balanceOf(userA).then(a=>console.log("crv on wallet: " +a))
 
     await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
-    await advanceTime(day*3);
+    await advanceTime(day);
     await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
 
-    await rpool.getReward(userA, {from:userA});
+    // await rpool.getReward(userA, {from:userA});
+    //claim to self
+    await rpool.methods['getReward(address)'](userA, {from:userA});
     console.log("claimed");
 
     await crv.balanceOf(userA).then(a=>console.log("crv on wallet: " +a))
+    await crv.balanceOf(booster.address).then(a=>console.log("crv on booster: " +a))
+
+
+    await crv.balanceOf(feedeposit.address).then(a=>console.log("crv on fee deposit: " +a))
+
+    await booster.processFees();
+    console.log("fees processed")
+
+    await crv.balanceOf(booster.address).then(a=>console.log("crv on fee booster: " +a))
+    await crv.balanceOf(feedeposit.address).then(a=>console.log("crv on fee deposit: " +a))
+
+    await advanceTime(day);
+    console.log("reward fowarding...")
+
+
+    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+    
+    await crv.balanceOf(userA).then(a=>console.log("crv on wallet A: " +a))
+
+    //claim and forward
+    await rpool.methods['getReward(address,address)'](userA, userB, {from:userB}).catch(a=>console.log("revert if not owner: " +a));
+    await rpool.methods['getReward(address,address)'](userA, userB, {from:userA});
+    console.log("claimed & forwarded");
+    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+
+    await crv.balanceOf(userA).then(a=>console.log("crv on wallet A: " +a))
+    await crv.balanceOf(userB).then(a=>console.log("crv on wallet B: " +a))
 
     return;
   });

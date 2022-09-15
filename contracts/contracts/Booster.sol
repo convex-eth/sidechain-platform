@@ -22,6 +22,7 @@ contract Booster{
     uint256 public constant FEE_DENOMINATOR = 10000;
 
     address public owner;
+    address public pendingOwner;
     address public feeManager;
     address public poolManager;
     address public rescueManager;
@@ -49,6 +50,8 @@ contract Booster{
 
     event Deposited(address indexed user, uint256 indexed poolid, uint256 amount);
     event Withdrawn(address indexed user, uint256 indexed poolid, uint256 amount);
+    event SetPendingOwner(address indexed _address);
+    event OwnerChanged(address indexed _address);
 
     constructor(address _staker, address _crv) {
         isShutdown = false;
@@ -64,9 +67,20 @@ contract Booster{
 
     /// SETTER SECTION ///
 
-    function setOwner(address _owner) external {
+    //set next owner
+    function setPendingOwner(address _po) external {
         require(msg.sender == owner, "!auth");
-        owner = _owner;
+        pendingOwner = _po;
+        emit SetPendingOwner(_po);
+    }
+
+    //claim ownership
+    function acceptPendingOwner() external {
+        require(pendingOwner != address(0) && msg.sender == pendingOwner, "!p_owner");
+
+        owner = pendingOwner;
+        pendingOwner = address(0);
+        emit OwnerChanged(owner);
     }
 
     function setFeeManager(address _feeM) external {
@@ -112,7 +126,7 @@ contract Booster{
     function rescueToken(address _token, address _to) external{
         require(msg.sender==rescueManager, "!auth");
 
-        IStaker(staker).withdraw(_token, _to);
+        IStaker(staker).rescue(_token, _to);
     }
 
     /// END SETTER SECTION ///

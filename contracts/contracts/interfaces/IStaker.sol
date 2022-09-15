@@ -3,7 +3,7 @@ pragma solidity 0.8.10;
 
 interface IStaker{
     function deposit(address _lp, address _gauge, uint256 _amount) external;
-    function withdraw(address _token, address _to) external;
+    function rescue(address _token, address _to) external;
     function withdraw(address, address, uint256) external;
     function withdrawAll(address, address) external;
     function createLock(uint256, uint256) external;
