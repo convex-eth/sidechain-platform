@@ -11,6 +11,7 @@ const RewardFactory = artifacts.require("RewardFactory");
 const DepositToken = artifacts.require("DepositToken");
 const ConvexRewardPool = artifacts.require("ConvexRewardPool");
 const FeeDeposit = artifacts.require("FeeDeposit");
+const IGauge = artifacts.require("IGauge");
 
 const IERC20 = artifacts.require("IERC20");
 const ERC20 = artifacts.require("ERC20");
@@ -143,13 +144,13 @@ contract("Deploy System and test staking/rewards", async accounts => {
 
     console.log("\n\n >>>> add pool >>>>")
     //tricrypto
-    let gauge = "0x555766f3da968ecBefa690Ffd49A2Ac02f47aa5f";
+    let gauge = await IGauge.at("0x555766f3da968ecBefa690Ffd49A2Ac02f47aa5f");
     let curvelp = await IERC20.at("0x8e0B8c8BB9db49a46697F3a5Bb8A308e744821D2");
     let curvepool = "0x960ea3e3C7FB317332d990873d354E18d7645590";
     let curvePoolFactory = "0xabC000d88f23Bb45525E447528DBF656A9D55bf5";
 
 
-    await booster.addPool(curvelp.address, gauge, curvePoolFactory,{from:deployer});
+    await booster.addPool(curvelp.address, gauge.address, curvePoolFactory,{from:deployer});
     console.log("pool added");
     var plength = await booster.poolLength();
     console.log("pool count: " +plength);
@@ -210,7 +211,12 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("deposit and staked in booster");
 
     await rpool.balanceOf(userA).then(a=>console.log("balance in rewards: " +a))
-    await rpool.totalSupply().then(a=>console.log("totalSupply = " +a));
+    await rpool.totalSupply().then(a=>console.log("rewards totalSupply: " +a));
+    await gauge.totalSupply().then(a=>console.log("gauge total supply: " +a))
+    await gauge.balanceOf(voteproxy).then(a=>console.log("gauge balanceOf convex: " +a))
+    await gauge.working_balances(voteproxy).then(a=>console.log("gauge working_balances convex: " +a))
+    await gauge.working_supply().then(a=>console.log("gauge working_supply: " +a))
+
 
     // await rpool.getReward(userA, {from:userA});
     // console.log("claimed");
@@ -253,6 +259,21 @@ contract("Deploy System and test staking/rewards", async accounts => {
 
     await crv.balanceOf(userA).then(a=>console.log("crv on wallet A: " +a))
     await crv.balanceOf(userB).then(a=>console.log("crv on wallet B: " +a))
+
+    console.log("\n\n --- staking and rewards complete ----");
+
+
+    console.log("\n\n >>> withdraw >>>");
+
+
+    await rpool.balanceOf(userA).then(a=>console.log("balance in rewards: " +a))
+    await rpool.totalSupply().then(a=>console.log("rewards totalSupply: " +a));
+    await curvelp.balanceOf(userA).then(a=>console.log("curve lp balance: " +a))
+    await rpool.withdrawAllAndUnwrap(true,{from:userA});
+    console.log("withdrawn");
+    await rpool.balanceOf(userA).then(a=>console.log("balance in rewards: " +a))
+    await rpool.totalSupply().then(a=>console.log("rewards totalSupply: " +a));
+    await curvelp.balanceOf(userA).then(a=>console.log("curve lp balance: " +a))
 
     return;
   });
