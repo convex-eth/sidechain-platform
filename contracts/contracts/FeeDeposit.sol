@@ -19,7 +19,7 @@ contract FeeDeposit is IFeeDistro{
 
     event WithdrawTo(address indexed user, uint256 amount);
 
-    constructor(address _operator, address _crv) public {
+    constructor(address _operator, address _crv) {
         operator = _operator;
         crv = _crv;
     }

@@ -10,8 +10,8 @@ interface IDeposit {
    function withdrawTo(uint256,uint256,address) external;
    function claimRewards(uint256,address) external returns(bool);
    function claimCrv(uint256 _pid, address _gauge) external;
-   function rewardArbitrator() external returns(address);
    function setGaugeRedirect(uint256 _pid) external returns(bool);
-   function owner() external returns(address);
+   function owner() external view returns(address);
+   function rewardManager() external view returns(address);
    function calculatePlatformFees(uint256 _amount) external view returns(uint256);
 }
