@@ -8,6 +8,7 @@ import "./interfaces/IStaker.sol";
 import "./interfaces/ITokenMinter.sol";
 import "./interfaces/IFeeDistro.sol";
 import "./interfaces/IPoolFactory.sol";
+import "./interfaces/IRewardManager.sol";
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
@@ -60,7 +61,6 @@ contract Booster{
         feeManager = msg.sender;
         poolManager = msg.sender;
         rescueManager = msg.sender;
-        rewardManager = msg.sender;
         crv = _crv;
     }
 
@@ -100,6 +100,8 @@ contract Booster{
 
     function setRewardManager(address _rewardM) external {
         require(msg.sender == owner, "!auth");
+        require(IRewardManager(_rewardM).rewardHook() != address(0), "!no hook");
+
         rewardManager = _rewardM;
     }
 

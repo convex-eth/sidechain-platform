@@ -12,6 +12,8 @@ const DepositToken = artifacts.require("DepositToken");
 const ConvexRewardPool = artifacts.require("ConvexRewardPool");
 const FeeDeposit = artifacts.require("FeeDeposit");
 const IGauge = artifacts.require("IGauge");
+const RewardManager = artifacts.require("RewardManager");
+const PoolRewardHook = artifacts.require("PoolRewardHook");
 
 const IERC20 = artifacts.require("IERC20");
 const ERC20 = artifacts.require("ERC20");
@@ -121,6 +123,16 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("deposit token impl: " +tokenImp.address);
     await tokenFactory.setImplementation(tokenImp.address,{from:deployer});
     console.log("token impl set");
+
+    let rewardHook = await PoolRewardHook.new(booster.address, {from:deployer});
+    console.log("reward hook: " +rewardHook.address);
+    let rewardManager = await RewardManager.new(booster.address, {from:deployer});
+    console.log("reward manager: " +rewardManager.address);
+    await rewardManager.setPoolHook(rewardHook.address, {from:deployer});
+    await rewardManager.rewardHook().then(a=>console.log("hook set to " +a))
+
+    await booster.setRewardManager(rewardManager.address, {from:deployer});
+    await booster.rewardManager().then(a=>console.log("reward manager set to " +a));
 
     let rewardFactory = await RewardFactory.new(booster.address, usingproxy.address, crv.address, pfactory.address,{from:deployer});
     console.log("reward factory at: " +rewardFactory.address);

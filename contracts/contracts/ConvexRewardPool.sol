@@ -5,6 +5,7 @@ import "./interfaces/IGauge.sol";
 import "./interfaces/IStash.sol";
 import "./interfaces/IDeposit.sol";
 import "./interfaces/IRewardHook.sol";
+import "./interfaces/IRewardManager.sol";
 
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
@@ -76,6 +77,9 @@ contract ConvexRewardPool {
         convexPoolId = _poolId;
 
         _insertRewardToken(_crv);
+
+        //default hook
+        rewardHook = IRewardManager(IDeposit(convexBooster).rewardManager()).rewardHook();
     }
 
     function updateRewardList() public {
@@ -92,15 +96,19 @@ contract ConvexRewardPool {
 
     //register an extra reward token to be handled
     // (any new incentive that is not directly on curve gauges)
-    function setExtraReward(address _token) external{
+    function addExtraReward(address _token) external{
         //owner of booster can set extra rewards
-        require(IDeposit(convexBooster).owner() == msg.sender, "!owner");
+        require(IDeposit(convexBooster).rewardManager() == msg.sender, "!owner");
         
         //add to reward list
         _insertRewardToken(_token);
     }
 
     function _insertRewardToken(address _token) internal{
+        if(_token == convexToken || _token == address(0)){
+            //dont allow reward tracking of the staking token or invalid address
+            return;
+        }
         //add to reward list if new
         if(!rewardMap[_token]){
             RewardType storage r = rewards.push();
@@ -112,7 +120,7 @@ contract ConvexRewardPool {
 
     function setRewardHook(address _hook) external{
         //owner of booster can set reward hook
-        require(IDeposit(convexBooster).owner() == msg.sender, "!owner");
+        require(IDeposit(convexBooster).rewardManager() == msg.sender, "!owner");
         rewardHook = _hook;
     }
 
@@ -199,8 +207,9 @@ contract ConvexRewardPool {
         //update rewards and claim
         updateRewardsAndClaim();
 
+        //calc reward integrals
         uint256 rewardCount = rewards.length;
-        for (uint256 i = 0; i < rewardCount; i++) {
+        for(uint256 i = 0; i < rewardCount; i++){
            _calcRewardIntegral(i,_account,_forwardTo);
         }
     }
@@ -223,6 +232,9 @@ contract ConvexRewardPool {
     //change ABI to view to use this off chain
     function earned(address _account) external returns(EarnedData[] memory claimable) {
 
+        //update rewards since this is a write call anyway
+        updateRewardsAndClaim();
+
         uint256 rewardCount = rewards.length;
         claimable = new EarnedData[](rewardCount);
 
@@ -234,14 +246,23 @@ contract ConvexRewardPool {
             uint256 d_reward = bal - reward.reward_remaining;
             // crv is always slot 0. while unlikely, if crv was also added as a reward token checking by address would cause it to be skipped
             if(i == 0){
-                uint256 camount = IGauge(curveGauge).claimable_tokens(convexStaker);
-                uint256 fees = IDeposit(convexBooster).calculatePlatformFees(camount);
+                // uint256 camount = IGauge(curveGauge).claimable_tokens(convexStaker);
+                // uint256 fees = IDeposit(convexBooster).calculatePlatformFees(camount);
+                // if(fees > 0){
+                //     camount -= fees;
+                // }
+                // d_reward = d_reward + camount;
+
+                uint256 fees = IDeposit(convexBooster).calculatePlatformFees(d_reward);
                 if(fees > 0){
-                    camount -= fees;
+                    d_reward -= fees;
                 }
-                d_reward = d_reward + camount;
             }else{
-                d_reward = d_reward + IGauge(curveGauge).claimable_reward(convexStaker, reward.reward_token);
+                // (,,,,uint256 integral) = IGauge(curveGauge).reward_data(reward.reward_token);
+                // //check that reward exists on gauge or if its local
+                // if(integral > 0){
+                //     d_reward = d_reward + IGauge(curveGauge).claimable_reward(convexStaker, reward.reward_token);
+                // }
             }
 
             uint256 I = reward.reward_integral;

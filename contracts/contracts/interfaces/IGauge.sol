@@ -14,6 +14,7 @@ interface IGauge {
     function rewarded_token() external view returns(address);//v1
     function lp_token() external view returns(address);
     function set_rewards_receiver(address _receiver) external;
+    function reward_data(address _reward) external view returns(address distributor, uint256 period_finish, uint256 rate, uint256 last_update, uint256 integral);
     function claimed_reward(address _account, address _token) external view returns(uint256);
     function claimable_reward(address _account, address _token) external view returns(uint256);
     function claimable_tokens(address _account) external returns(uint256);

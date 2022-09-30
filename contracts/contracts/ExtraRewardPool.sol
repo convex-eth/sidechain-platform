@@ -69,8 +69,8 @@ contract ExtraRewardPool {
     mapping(address => uint256) private _balances;
 
     event RewardAdded(uint256 reward);
-    event Staked(address indexed user, uint256 amount);
-    event Withdrawn(address indexed user, uint256 amount);
+    event WeightSet(address indexed user, uint256 oldWeight, uint256 newWeight);
+    // event Withdrawn(address indexed user, uint256 amount);
     event RewardPaid(address indexed user, uint256 reward);
 
     constructor(address _booster){
@@ -138,7 +138,7 @@ contract ExtraRewardPool {
 
     //increase reward weight for a  given pool
     //used by reward manager
-    function increaseWeight(address _pool, uint256 _amount)
+    function setWeight(address _pool, uint256 _amount)
         public
         updateReward(_pool)
         returns(bool)
@@ -146,32 +146,41 @@ contract ExtraRewardPool {
         require(msg.sender == rewardManager(), "!authorized");
         // require(_amount > 0, 'invalid weight');
 
-        _totalSupply += _amount;
-        _balances[_pool] += _amount;
+
+        emit WeightSet(_pool, _balances[_pool], _amount);
+
+        uint256 tsupply = _totalSupply;
+        tsupply -= _balances[_pool]; //remove current
+        _balances[_pool] = _amount; //set new
+        tsupply += _amount; //add new to supply
+        _totalSupply = tsupply; //set supply
+
+        // _totalSupply += _amount;
+        // _balances[_pool] += _amount;
 
         // stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
-        emit Staked(_pool, _amount);
+        
 
         return true;
     }
 
     //decrease reward weight for a  given pool
     //used by reward manager
-    function decreaseWeight(address _pool, uint256 amount)
-        public
-        updateReward(_pool)
-        returns(bool)
-    {
-        require(msg.sender == rewardManager(), "!authorized");
-        // require(amount > 0, 'invalid weight');
+    // function decreaseWeight(address _pool, uint256 amount)
+    //     public
+    //     updateReward(_pool)
+    //     returns(bool)
+    // {
+    //     require(msg.sender == rewardManager(), "!authorized");
+    //     // require(amount > 0, 'invalid weight');
 
-        _totalSupply -= amount;
-        _balances[_pool] -= amount;
+    //     _totalSupply -= amount;
+    //     _balances[_pool] -= amount;
 
-        emit Withdrawn(_pool, amount);
+    //     emit Withdrawn(_pool, amount);
      
-        return true;
-    }
+    //     return true;
+    // }
 
 
     function getReward(address _account) public updateReward(_account) returns(bool){
