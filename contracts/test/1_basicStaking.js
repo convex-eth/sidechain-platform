@@ -14,6 +14,8 @@ const FeeDeposit = artifacts.require("FeeDeposit");
 const IGauge = artifacts.require("IGauge");
 const RewardManager = artifacts.require("RewardManager");
 const PoolRewardHook = artifacts.require("PoolRewardHook");
+const ExtraRewardPool = artifacts.require("ExtraRewardPool");
+const DummyToken = artifacts.require("DummyToken");
 
 const IERC20 = artifacts.require("IERC20");
 const ERC20 = artifacts.require("ERC20");
@@ -273,6 +275,67 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await crv.balanceOf(userB).then(a=>console.log("crv on wallet B: " +a))
 
     console.log("\n\n --- staking and rewards complete ----");
+
+
+    console.log("\n\n >>> extra rewards >>>");
+    var dummytoken = await DummyToken.new("DummyToken","DT", {from:deployer});
+    console.log("dummy token at " +dummytoken.address);
+    await dummytoken.mint(deployer,web3.utils.toWei("1000000.0", "ether"),{from:deployer});
+    console.log("minted")
+
+    await rpool.rewardLength().then(a=>console.log("reward length: "+a))
+    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+
+
+    await rewardManager.setPoolRewardToken(rpool.address, dummytoken.address, {from:deployer});
+    console.log("set reward on pool");
+    await rpool.rewardLength().then(a=>console.log("reward length: "+a))
+
+    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+
+
+    var extrapool = await ExtraRewardPool.new(booster.address,{from:deployer});
+    await extrapool.initialize(dummytoken.address,{from:deployer});
+    console.log("extra pool at " +extrapool.address);
+    await extrapool.rewardManager().then(a=>console.log("manager is: " +a))
+    await extrapool.rewardToken().then(a=>console.log("reward is: " +a))
+    await extrapool.periodFinish().then(a=>console.log("periodFinish is: " +a))
+    await extrapool.rewardRate().then(a=>console.log("rewardRate is: " +a))
+
+
+    await dummytoken.transfer(extrapool.address, web3.utils.toWei("1000.0", "ether"), {from:deployer} );
+    await rewardManager.queueNewRewards(extrapool.address,web3.utils.toWei("1000.0", "ether"), {from:deployer} );
+    console.log("rewards queued");
+
+    await extrapool.periodFinish().then(a=>console.log("periodFinish is: " +a))
+    await extrapool.rewardRate().then(a=>console.log("rewardRate is: " +a))
+
+    await extrapool.balanceOf(rpool.address).then(a=>console.log("weight of pool: " +a))
+    await rewardManager.setPoolWeight(rpool.address, extrapool.address, web3.utils.toWei("1.0", "ether"), {from:deployer});
+    console.log("set weight");
+    await extrapool.balanceOf(rpool.address).then(a=>console.log("weight of pool: " +a))
+
+    await rewardManager.setPoolRewardContract(rpool.address, rewardHook.address, extrapool.address, {from:deployer});
+    console.log("added reward contract to hook for given pool");
+
+    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+    await advanceTime(day);
+    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+    await rpool.earned(userA);
+    console.log("call earned as write");
+    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+
+
+    await crv.balanceOf(userA).then(a=>console.log("crv on wallet A: " +a))
+    await dummytoken.balanceOf(userA).then(a=>console.log("dummytoken on wallet A: " +a))
+    await dummytoken.balanceOf(extrapool.address).then(a=>console.log("dummytoken on extrapool: " +a))
+    await dummytoken.balanceOf(rpool.address).then(a=>console.log("dummytoken on rpool: " +a))
+    await rpool.methods['getReward(address)'](userA, {from:userA});
+    console.log("claimed");
+    await crv.balanceOf(userA).then(a=>console.log("crv on wallet A: " +a))
+    await dummytoken.balanceOf(userA).then(a=>console.log("dummytoken on wallet A: " +a))
+
+    console.log("\n\n --- extra rewards complete ----");
 
 
     console.log("\n\n >>> withdraw >>>");

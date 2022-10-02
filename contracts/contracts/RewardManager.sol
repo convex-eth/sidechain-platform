@@ -83,4 +83,13 @@ contract RewardManager{
         IRewards(_pool).setRewardHook(_hook);
         emit HookSet(_pool, _hook);
     }
+
+    //update a pool's reward hook
+    //todo: replace queue with set distro
+    function queueNewRewards(address _pool, uint256 _rewards) external{
+        require(msg.sender == owner(), "!auth");
+
+        IRewards(_pool).queueNewRewards(_rewards);
+    }
+
 }

@@ -12,6 +12,7 @@ interface IRewards{
     function notifyRewardAmount(uint256) external;
     function addExtraReward(address) external;
     function setRewardHook(address) external;
+    function user_checkpoint(address _account) external returns(bool);
     function stakingToken() external view returns (address);
     function rewardToken() external view returns(address);
     function rewardMap(address) external view returns(bool);
