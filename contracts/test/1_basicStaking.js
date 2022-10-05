@@ -232,15 +232,12 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await gauge.working_supply().then(a=>console.log("gauge working_supply: " +a))
 
 
-    // await rpool.getReward(userA, {from:userA});
-    // console.log("claimed");
     await crv.balanceOf(userA).then(a=>console.log("crv on wallet: " +a))
 
     await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
     await advanceTime(day);
     await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
 
-    // await rpool.getReward(userA, {from:userA});
     //claim to self
     await rpool.methods['getReward(address)'](userA, {from:userA});
     console.log("claimed");
@@ -321,10 +318,12 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
     await advanceTime(day);
     await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
-    await rpool.earned(userA);
-    console.log("call earned as write");
+    await advanceTime(day);
     await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
-
+    await advanceTime(day);
+    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+    await advanceTime(day);
+    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
 
     await crv.balanceOf(userA).then(a=>console.log("crv on wallet A: " +a))
     await dummytoken.balanceOf(userA).then(a=>console.log("dummytoken on wallet A: " +a))

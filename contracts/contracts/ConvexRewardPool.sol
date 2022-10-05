@@ -152,8 +152,8 @@ contract ConvexRewardPool {
         //getReward is unguarded so we use reward_remaining to keep track of how much was actually claimed
         uint256 bal = IERC20(reward.reward_token).balanceOf(address(this));
 
-        //if reward token is crv, need to calculate fees
-        if(reward.reward_token == crv){
+        //if reward token is crv (always slot 0), need to calculate fees
+        if(_index == 0){
             uint256 diff = bal - reward.reward_remaining;
             uint256 fees = IDeposit(convexBooster).calculatePlatformFees(diff);
             if(fees > 0){
@@ -227,11 +227,12 @@ contract ConvexRewardPool {
         return _balances[account];
     }
 
+
     //get earned token info
     //Note: The curve gauge function "claimable_tokens" is a write function and thus this is not by default a view
     //change ABI to view to use this off chain
     function earned(address _account) external returns(EarnedData[] memory claimable) {
-
+        
         //update rewards since this is a write call anyway
         updateRewardsAndClaim();
 
@@ -244,25 +245,14 @@ contract ConvexRewardPool {
             //change in reward is current balance - remaining reward + earned
             uint256 bal = IERC20(reward.reward_token).balanceOf(address(this));
             uint256 d_reward = bal - reward.reward_remaining;
-            // crv is always slot 0. while unlikely, if crv was also added as a reward token checking by address would cause it to be skipped
-            if(i == 0){
-                // uint256 camount = IGauge(curveGauge).claimable_tokens(convexStaker);
-                // uint256 fees = IDeposit(convexBooster).calculatePlatformFees(camount);
-                // if(fees > 0){
-                //     camount -= fees;
-                // }
-                // d_reward = d_reward + camount;
 
+            // crv is always slot 0
+            if(i == 0){
+                //check fees
                 uint256 fees = IDeposit(convexBooster).calculatePlatformFees(d_reward);
                 if(fees > 0){
                     d_reward -= fees;
                 }
-            }else{
-                // (,,,,uint256 integral) = IGauge(curveGauge).reward_data(reward.reward_token);
-                // //check that reward exists on gauge or if its local
-                // if(integral > 0){
-                //     d_reward = d_reward + IGauge(curveGauge).claimable_reward(convexStaker, reward.reward_token);
-                // }
             }
 
             uint256 I = reward.reward_integral;
@@ -274,7 +264,6 @@ contract ConvexRewardPool {
             claimable[i].amount = claimable_reward[reward.reward_token][_account] + newlyClaimable;
             claimable[i].token = reward.reward_token;
         }
-        return claimable;
     }
 
     //claim reward for given account (unguarded)

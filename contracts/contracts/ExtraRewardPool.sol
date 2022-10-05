@@ -45,7 +45,9 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 
-
+/*
+ Reward contract managed by a RewardManager which can manually set weights for any account address
+*/
 contract ExtraRewardPool {
     using SafeERC20 for IERC20;
 
@@ -70,7 +72,6 @@ contract ExtraRewardPool {
 
     event RewardAdded(uint256 reward);
     event WeightSet(address indexed user, uint256 oldWeight, uint256 newWeight);
-    // event Withdrawn(address indexed user, uint256 amount);
     event RewardPaid(address indexed user, uint256 reward);
 
     constructor(address _booster){
@@ -93,18 +94,22 @@ contract ExtraRewardPool {
         return _totalSupply;
     }
 
-    function balanceOf(address account) public view returns (uint256) {
-        return _balances[account];
+    function balanceOf(address _account) public view returns (uint256) {
+        return _balances[_account];
     }
 
-    modifier updateReward(address account) {
+    modifier updateReward(address _account) {
         rewardPerTokenStored = rewardPerToken();
         lastUpdateTime = lastTimeRewardApplicable();
-        if (account != address(0)) {
-            rewards[account] = earned(account);
-            userRewardPerTokenPaid[account] = rewardPerTokenStored;
+        if (_account != address(0)) {
+            rewards[_account] = earned(_account);
+            userRewardPerTokenPaid[_account] = rewardPerTokenStored;
         }
         _;
+    }
+
+    function user_checkpoint(address _account) public updateReward(_account){
+
     }
 
     function lastTimeRewardApplicable() public view returns (uint256) {
@@ -116,72 +121,34 @@ contract ExtraRewardPool {
             return rewardPerTokenStored;
         }
         return rewardPerTokenStored + ((lastTimeRewardApplicable() - lastUpdateTime) * rewardRate * 1e18 / totalSupply());
-        // return
-        //     rewardPerTokenStored.add(
-        //         lastTimeRewardApplicable()
-        //             .sub(lastUpdateTime)
-        //             .mul(rewardRate)
-        //             .mul(1e18)
-        //             .div(totalSupply())
-        //     );
     }
 
-    function earned(address account) public view returns (uint256) {
-        return rewards[account] + (balanceOf(account) * (rewardPerToken() - userRewardPerTokenPaid[account]) / 1e18);
-        // return
-        //     balanceOf(account)
-        //         .mul(rewardPerToken().sub(userRewardPerTokenPaid[account]))
-        //         .div(1e18)
-        //         .add(rewards[account]);
+    function earned(address _account) public view returns (uint256) {
+        return rewards[_account] + (balanceOf(_account) * (rewardPerToken() - userRewardPerTokenPaid[_account]) / 1e18);
     }
 
 
     //increase reward weight for a  given pool
     //used by reward manager
-    function setWeight(address _pool, uint256 _amount)
+    function setWeight(address _account, uint256 _amount)
         public
-        updateReward(_pool)
+        updateReward(_account)
         returns(bool)
     {
         require(msg.sender == rewardManager(), "!authorized");
-        // require(_amount > 0, 'invalid weight');
 
-
-        emit WeightSet(_pool, _balances[_pool], _amount);
+        emit WeightSet(_account, _balances[_account], _amount);
 
         uint256 tsupply = _totalSupply;
-        tsupply -= _balances[_pool]; //remove current
-        _balances[_pool] = _amount; //set new
+        tsupply -= _balances[_account]; //remove current
+        _balances[_account] = _amount; //set new
         tsupply += _amount; //add new to supply
         _totalSupply = tsupply; //set supply
 
-        // _totalSupply += _amount;
-        // _balances[_pool] += _amount;
-
-        // stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
-        
-
+        //work around to correct earned() function on ConvexRewardPool for a new reward type
+        rewardToken.safeTransfer(_account, 0);
         return true;
     }
-
-    //decrease reward weight for a  given pool
-    //used by reward manager
-    // function decreaseWeight(address _pool, uint256 amount)
-    //     public
-    //     updateReward(_pool)
-    //     returns(bool)
-    // {
-    //     require(msg.sender == rewardManager(), "!authorized");
-    //     // require(amount > 0, 'invalid weight');
-
-    //     _totalSupply -= amount;
-    //     _balances[_pool] -= amount;
-
-    //     emit Withdrawn(_pool, amount);
-     
-    //     return true;
-    // }
-
 
     function getReward(address _account) public updateReward(_account) returns(bool){
         uint256 reward = earned(_account);
@@ -207,30 +174,6 @@ contract ExtraRewardPool {
         return true;
     }
 
-    // function _queueNewRewards(uint256 _rewards) internal returns(bool){
-        
-    //     // _rewards += queuedRewards;
-
-    //     //if (block.timestamp >= periodFinish) {
-    //         notifyRewardAmount(_rewards + queuedRewards);
-    //         queuedRewards = 0;
-    //         return true;
-    //     //}
-
-    //     // //et = now - (finish-duration)
-    //     // uint256 elapsedTime = block.timestamp - (periodFinish - duration);
-    //     // //current at now: rewardRate * elapsedTime
-    //     // uint256 currentAtNow = rewardRate * elapsedTime;
-    //     // uint256 queuedRatio = currentAtNow * 1000 / _rewards;
-
-    //     // if(queuedRatio < newRewardRatio){
-    //     //     notifyRewardAmount(_rewards);
-    //     //     queuedRewards = 0;
-    //     // }else{
-    //     //     queuedRewards = _rewards;
-    //     // }
-    //     // return true;
-    // }
 
     function notifyRewardAmount(uint256 reward)
         internal
