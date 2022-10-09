@@ -68,11 +68,13 @@ contract ExtraRewardPool {
     uint256 private _totalSupply;
     mapping(address => uint256) public userRewardPerTokenPaid;
     mapping(address => uint256) public rewards;
+    mapping(address => bool) public distributors;
     mapping(address => uint256) private _balances;
 
     event RewardAdded(uint256 reward);
     event WeightSet(address indexed user, uint256 oldWeight, uint256 newWeight);
     event RewardPaid(address indexed user, uint256 reward);
+    event AddDistributor(address indexed _distro, bool _valid);
 
     constructor(address _booster){
         booster = _booster;
@@ -88,6 +90,12 @@ contract ExtraRewardPool {
 
     function rewardManager() public view returns(address){
         return IDeposit(booster).rewardManager();
+    }
+
+    function setDistributor(address _distro, bool _valid) external {
+        require(msg.sender == rewardManager(), "!authorized");
+        distributors[_distro] = _valid;
+        emit AddDistributor(_distro, _valid);
     }
 
     function totalSupply() public view returns (uint256) {
@@ -167,7 +175,11 @@ contract ExtraRewardPool {
     }
 
     function queueNewRewards(uint256 _rewards) external returns(bool){
-        require(msg.sender == rewardManager(), "!authorized");
+        require(distributors[msg.sender], "!distro");
+
+        if(_rewards > 0){
+            IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), _rewards);
+        }
 
         notifyRewardAmount(_rewards + queuedRewards);
         queuedRewards = 0;

@@ -27,6 +27,7 @@ contract RewardManager{
     event PoolRewardContractClear(address indexed pool, address indexed hook);
     event DefaultHookSet(address hook);
     event HookSet(address indexed pool, address hook);
+    event AddDistributor(address indexed rewardContract, address indexed _distro, bool _valid);
 
     constructor(address _booster) {
         booster = _booster;
@@ -84,12 +85,11 @@ contract RewardManager{
         emit HookSet(_pool, _hook);
     }
 
-    //update a pool's reward hook
-    //todo: replace queue with set distro
-    function queueNewRewards(address _pool, uint256 _rewards) external{
+    //set a reward contract distributor
+    function setRewardDistributor(address _rewardContract, address _distro, bool _isValid) external{
         require(msg.sender == owner(), "!auth");
 
-        IRewards(_pool).queueNewRewards(_rewards);
+        IRewards(_rewardContract).setDistributor(_distro, _isValid);
     }
 
 }

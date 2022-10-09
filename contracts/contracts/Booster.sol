@@ -12,42 +12,45 @@ import "./interfaces/IRewardManager.sol";
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
-
+/*
+This is the main contract which will have operator role on the VoterProxy.
+Handles pool creation, deposits/withdraws, as well as other managment functions like factories/managers/fees
+*/
 contract Booster{
     using SafeERC20 for IERC20;
 
     address public immutable crv;
 
     uint256 public fees = 1700; //platform fees
-    uint256 public constant MaxFees = 2500;
+    uint256 public constant MaxFees = 2500; //hard code max fees
     uint256 public constant FEE_DENOMINATOR = 10000;
 
-    address public owner;
-    address public pendingOwner;
-    address public feeManager;
-    address public poolManager;
-    address public rescueManager;
-    address public rewardManager;
-    address public immutable staker;
-    address public rewardFactory;
-    address public tokenFactory;
-    address public feeDeposit;
+    address public owner; //owner
+    address public pendingOwner; //pending owner
+    address public feeManager; //set platform fees
+    address public poolManager; //add and shutdown pools
+    address public rescueManager; //specific role just for pulling non-lp/gauge tokens from voterproxy
+    address public rewardManager; //controls rewards
+    address public immutable staker; //voter proxy
+    address public rewardFactory; //factory for creating main reward/staking pools
+    address public tokenFactory; //factor for creating deposit receipt tokens
+    address public feeDeposit; //address where fees are accumulated
 
-    bool public isShutdown;
+    bool public isShutdown; //flag if booster is shutdown or not
 
     struct PoolInfo {
-        address lptoken;
-        address token;
-        address gauge;
-        address rewards;
-        bool shutdown;
-        address factory;
+        address lptoken; //the curve lp token
+        address token; //the convex deposit token
+        address gauge; //the curve gauge
+        address rewards; //the main reward/staking contract
+        bool shutdown; //is this pool shutdown?
+        address factory; //a reference to the curve factory used to create this pool (needed for minting crv)
     }
 
-    //index(pid) -> pool
-    PoolInfo[] public poolInfo;
-    mapping(address => bool) public gaugeMap;
-    mapping(uint256 => uint256) public shutdownBalances; //pid -> lp balance
+
+    PoolInfo[] public poolInfo;//list of convex pools, index(pid) -> pool
+    mapping(address => bool) public gaugeMap;//map defining if a curve gauge is already being used or not
+    mapping(uint256 => uint256) public shutdownBalances; //lp balances of a shutdown pool, index(pid) -> lp balance
 
     event Deposited(address indexed user, uint256 indexed poolid, uint256 amount);
     event Withdrawn(address indexed user, uint256 indexed poolid, uint256 amount);
@@ -67,7 +70,7 @@ contract Booster{
 
     /// SETTER SECTION ///
 
-    //set next owner
+    //set next pending owner. owner must accept
     function setPendingOwner(address _po) external {
         require(msg.sender == owner, "!auth");
         pendingOwner = _po;
@@ -83,21 +86,29 @@ contract Booster{
         emit OwnerChanged(owner);
     }
 
+    //set a fee manager
+    //note: only the fee mananger can relinquish control
     function setFeeManager(address _feeM) external {
         require(msg.sender == feeManager, "!auth");
         feeManager = _feeM;
     }
 
+    //set a pool manager
+    //note: only the pool manager can relinquish control
     function setPoolManager(address _poolM) external {
         require(msg.sender == poolManager, "!auth");
         poolManager = _poolM;
     }
 
+    //set a rescue manager for tokens
+    //set by owner. separate role though in case something needs to be streamlined like claiming outside rewards.
     function setRescueManager(address _rescueM) external {
         require(msg.sender == owner, "!auth");
         rescueManager = _rescueM;
     }
 
+    //set reward manager
+    //can add extra rewards and reward hooks on pools
     function setRewardManager(address _rewardM) external {
         require(msg.sender == owner, "!auth");
         require(IRewardManager(_rewardM).rewardHook() != address(0), "!no hook");
@@ -105,6 +116,7 @@ contract Booster{
         rewardManager = _rewardM;
     }
 
+    //set factories used when deploying new reward/token contracts
     function setFactories(address _rfactory, address _tfactory) external {
         require(msg.sender == owner, "!auth");
         
@@ -112,12 +124,14 @@ contract Booster{
         tokenFactory = _tfactory;
     }
 
+    //set address that receives platform fees
     function setFeeDeposit(address _deposit) external {
         require(msg.sender == owner, "!auth");
         
         feeDeposit = _deposit;
     }
 
+    //set platform fees
     function setFees(uint256 _platformFees) external{
         require(msg.sender==feeManager, "!auth");
         require(_platformFees <= MaxFees, ">MaxFees");
@@ -125,6 +139,8 @@ contract Booster{
         fees = _platformFees;
     }
 
+    //rescue a token from the voter proxy
+    //token must not be an lp or gauge token
     function rescueToken(address _token, address _to) external{
         require(msg.sender==rescueManager, "!auth");
 
@@ -133,14 +149,18 @@ contract Booster{
 
     /// END SETTER SECTION ///
 
+    //get pool count
     function poolLength() external view returns (uint256) {
         return poolInfo.length;
     }
 
     //create a new pool
     function addPool(address _lptoken, address _gauge, address _factory) external returns(bool){
+        //only manager
         require(msg.sender==poolManager && !isShutdown, "!add");
+        //basic checks
         require(_gauge != address(0) && _lptoken != address(0) && _factory != address(0),"!param");
+        //an unused pool
         require(!gaugeMap[_gauge] && !gaugeMap[_lptoken],"gaugeMap");
 
         //check that the given factory is indeed tied with the gauge
@@ -154,8 +174,6 @@ contract Booster{
         //create a reward contract for rewards
         address newRewardPool = IRewardFactory(rewardFactory).CreateMainRewards(_gauge,token,pid);
 
-
-
         //add the new pool
         poolInfo.push(
             PoolInfo({
@@ -167,6 +185,7 @@ contract Booster{
                 factory: _factory
             })
         );
+        //set gauge as being used
         gaugeMap[_gauge] = true;
 
         //set gauge redirect
@@ -180,11 +199,20 @@ contract Booster{
         return true;
     }
 
-    //shutdown pool
+    //shutdown pool, only call from pool manager
     function shutdownPool(uint256 _pid) external returns(bool){
         require(msg.sender==poolManager, "!auth");
+        return _shutdownPool(_pid);
+    }
+
+    //shutdown pool internal call
+    function _shutdownPool(uint256 _pid) internal returns(bool){
+        
         PoolInfo storage pool = poolInfo[_pid];
-        require(!pool.shutdown,"already shutdown");
+        if(pool.shutdown){
+            //already shut down
+            return false;
+        }  
 
         uint256 lpbalance = IERC20(pool.lptoken).balanceOf(address(this));
 
@@ -194,11 +222,15 @@ contract Booster{
 
         //lp difference
         lpbalance = IERC20(pool.lptoken).balanceOf(address(this)) - lpbalance;
+
         //record how many lp tokens were returned
+        //this is important to prevent a fake gauge attack which inflates deposit tokens
+        //in order to withdraw another pool's legitamate lp tokens
         shutdownBalances[_pid] = lpbalance;
 
-
+        //flag pool as shutdown
         pool.shutdown = true;
+        //reset gauge map
         gaugeMap[pool.gauge] = false;
         return true;
     }
@@ -208,19 +240,13 @@ contract Booster{
     //  only allow withdrawals
     function shutdownSystem() external{
         require(msg.sender == owner, "!auth");
+        //flag system as shutdown
         isShutdown = true;
 
+        //shutdown all pools.
+        //gas cost could grow too large to do all, in which case individual pools should be shutdown first
         for(uint i=0; i < poolInfo.length; i++){
-            PoolInfo storage pool = poolInfo[i];
-            if (pool.shutdown) continue;
-
-            address token = pool.lptoken;
-            address gauge = pool.gauge;
-
-            //withdraw from gauge
-            try IStaker(staker).withdrawAll(token,gauge){
-                pool.shutdown = true;
-            }catch{}
+            _shutdownPool(i);
         }
     }
 
@@ -317,6 +343,7 @@ contract Booster{
         return true;
     }
 
+    //claim crv for a pool from the pool's factory and send to rewards
     function claimCrv(uint256 _pid, address _gauge) external{
         address rewardContract = poolInfo[_pid].rewards;
         require(msg.sender == rewardContract,"!auth");
@@ -325,12 +352,15 @@ contract Booster{
         IStaker(staker).claimCrv(poolInfo[_pid].factory, _gauge, rewardContract);
     }
 
+    //set a gauge's redirect setting to claim extra rewards directly to a reward contract 
+    //instead of being pulled to the voterproxy/staker contract 
     function setGaugeRedirect(address _gauge, address _rewards) internal returns(bool){
         bytes memory data = abi.encodeWithSelector(bytes4(keccak256("set_rewards_receiver(address)")), _rewards);
         IStaker(staker).execute(_gauge,uint256(0),data);
         return true;
     }
 
+    //given an amount of crv, calculate fees
     function calculatePlatformFees(uint256 _amount) external view returns(uint256){
         uint256 _fees = _amount * fees / FEE_DENOMINATOR;
         return _fees;
@@ -344,6 +374,7 @@ contract Booster{
         if (crvBal > 0) {
             //send to a fee depositor that knows how to process
             IERC20(crv).safeTransfer(feeDeposit, crvBal);
+            //let the fee depositor know tokens were sent
             IFeeDistro(feeDeposit).onFeesClaimed();
         }
     }

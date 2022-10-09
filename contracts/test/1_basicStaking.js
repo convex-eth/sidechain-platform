@@ -299,9 +299,15 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await extrapool.periodFinish().then(a=>console.log("periodFinish is: " +a))
     await extrapool.rewardRate().then(a=>console.log("rewardRate is: " +a))
 
+    await rewardManager.setRewardDistributor(extrapool.address, deployer, true, {from:deployer} );
+    console.log("set reward distributor")
 
-    await dummytoken.transfer(extrapool.address, web3.utils.toWei("1000.0", "ether"), {from:deployer} );
-    await rewardManager.queueNewRewards(extrapool.address,web3.utils.toWei("1000.0", "ether"), {from:deployer} );
+    await dummytoken.approve(extrapool.address, web3.utils.toWei("100000000.0", "ether"), {from:deployer});
+    console.log("distributor approval")
+
+    // await dummytoken.transfer(extrapool.address, web3.utils.toWei("1000.0", "ether"), {from:deployer} );
+    await extrapool.queueNewRewards(web3.utils.toWei("0.0", "ether"), {from:userA} ).catch(a=>console.log("revert on non-distributor: " +a));
+    await extrapool.queueNewRewards(web3.utils.toWei("1000.0", "ether"), {from:deployer} );
     console.log("rewards queued");
 
     await extrapool.periodFinish().then(a=>console.log("periodFinish is: " +a))
