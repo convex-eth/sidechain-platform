@@ -128,7 +128,11 @@ contract("Deploy System and test staking/rewards", async accounts => {
 
     let rewardHook = await PoolRewardHook.new(booster.address, {from:deployer});
     console.log("reward hook: " +rewardHook.address);
-    let rewardManager = await RewardManager.new(booster.address, {from:deployer});
+
+    var dummytoken = await DummyToken.new("DummyToken","DT", {from:deployer});
+    console.log("dummy cvx token at " +dummytoken.address);
+
+    let rewardManager = await RewardManager.new(booster.address, dummytoken.address, {from:deployer});
     console.log("reward manager: " +rewardManager.address);
     await rewardManager.setPoolHook(rewardHook.address, {from:deployer});
     await rewardManager.rewardHook().then(a=>console.log("hook set to " +a))
@@ -275,8 +279,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
 
 
     console.log("\n\n >>> extra rewards >>>");
-    var dummytoken = await DummyToken.new("DummyToken","DT", {from:deployer});
-    console.log("dummy token at " +dummytoken.address);
+    
     await dummytoken.mint(deployer,web3.utils.toWei("1000000.0", "ether"),{from:deployer});
     console.log("minted")
 

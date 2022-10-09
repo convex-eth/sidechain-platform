@@ -76,10 +76,15 @@ contract ConvexRewardPool {
         convexToken = _convexToken;
         convexPoolId = _poolId;
 
+        //always add CRV in first slot
         _insertRewardToken(_crv);
 
-        //default hook
-        rewardHook = IRewardManager(IDeposit(convexBooster).rewardManager()).rewardHook();
+        //add CVX in second slot
+        address rmanager = IDeposit(convexBooster).rewardManager();
+        _insertRewardToken(IRewardManager(rmanager).cvx());
+
+        //set default hook
+        rewardHook = IRewardManager(rmanager).rewardHook();
     }
 
     function updateRewardList() public {

@@ -18,6 +18,7 @@ contract RewardManager{
 
 
     address public rewardHook;
+    address public immutable cvx;
 
     // mapping(address => address[]) public poolRewardList;
 
@@ -29,8 +30,9 @@ contract RewardManager{
     event HookSet(address indexed pool, address hook);
     event AddDistributor(address indexed rewardContract, address indexed _distro, bool _valid);
 
-    constructor(address _booster) {
+    constructor(address _booster, address _cvx) {
         booster = _booster;
+        cvx = _cvx;
     }
 
     function owner() public view returns(address){

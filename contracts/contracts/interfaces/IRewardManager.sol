@@ -3,4 +3,5 @@ pragma solidity 0.8.10;
 
 interface IRewardManager {
     function rewardHook() external view returns(address);
+    function cvx() external view returns(address);
 }
