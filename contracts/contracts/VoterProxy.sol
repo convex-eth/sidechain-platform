@@ -15,7 +15,6 @@ contract VoterProxy {
     address public owner;
     address public pendingOwner;
     address public operator;
-    address public depositor;
     
     // mapping (address => bool) private stashPool;
     mapping (address => bool) private protectedTokens;
@@ -52,12 +51,6 @@ contract VoterProxy {
         require(operator == address(0) || IDeposit(operator).isShutdown() == true, "needs shutdown");
         
         operator = _operator;
-    }
-
-    function setDepositor(address _depositor) external {
-        require(msg.sender == owner, "!auth");
-
-        depositor = _depositor;
     }
 
     function deposit(address _token, address _gauge, uint256 _amount) external returns(bool){

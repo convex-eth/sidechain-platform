@@ -25,7 +25,6 @@ contract Booster{
 
     address public owner; //owner
     address public pendingOwner; //pending owner
-    address public feeManager; //set platform fees
     address public poolManager; //add and shutdown pools
     address public rescueManager; //specific role just for pulling non-lp/gauge tokens from voterproxy
     address public rewardManager; //controls rewards
@@ -60,7 +59,6 @@ contract Booster{
         isShutdown = false;
         staker = _staker;
         owner = msg.sender;
-        feeManager = msg.sender;
         poolManager = msg.sender;
         rescueManager = msg.sender;
     }
@@ -93,13 +91,6 @@ contract Booster{
         factoryCrv[_factory] = _crv;
     }
 
-    //set a fee manager
-    //note: only the fee mananger can relinquish control
-    function setFeeManager(address _feeM) external {
-        require(msg.sender == feeManager, "!auth");
-        feeManager = _feeM;
-    }
-
     //set a pool manager
     //note: only the pool manager can relinquish control
     function setPoolManager(address _poolM) external {
@@ -119,6 +110,7 @@ contract Booster{
     function setRewardManager(address _rewardM) external {
         require(msg.sender == owner, "!auth");
         require(IRewardManager(_rewardM).rewardHook() != address(0), "!no hook");
+        require(IRewardManager(_rewardM).cvx() != address(0), "!no cvx");
 
         rewardManager = _rewardM;
     }
@@ -140,7 +132,7 @@ contract Booster{
 
     //set platform fees
     function setFees(uint256 _platformFees) external{
-        require(msg.sender==feeManager, "!auth");
+        require(msg.sender == owner, "!auth");
         require(_platformFees <= MaxFees, ">MaxFees");
 
         fees = _platformFees;
@@ -170,7 +162,7 @@ contract Booster{
         //crv check
         require(factoryCrv[_factory] != address(0), "!crv");
         //an unused pool
-        require(!gaugeMap[_gauge] && !gaugeMap[_lptoken],"gaugeMap");
+        require(!gaugeMap[_gauge] && !gaugeMap[_lptoken],"already reg");
 
         //check that the given factory is indeed tied with the gauge
         require(IPoolFactory(_factory).is_valid_gauge(_gauge),"!factory gauge");
