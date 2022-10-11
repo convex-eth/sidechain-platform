@@ -11,8 +11,6 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 contract VoterProxy {
     using SafeERC20 for IERC20;
-
-    address public immutable crv;
     
     address public owner;
     address public pendingOwner;
@@ -25,8 +23,7 @@ contract VoterProxy {
     event SetPendingOwner(address indexed _address);
     event OwnerChanged(address indexed _address);
 
-    constructor(address _crv){
-        crv = _crv;
+    constructor(){
         owner = msg.sender;
     }
 
@@ -109,18 +106,23 @@ contract VoterProxy {
         return true;
     }
 
-    function claimCrv(address _minter, address _gauge, address _to) external returns(uint256){
+    function claimCrv(address _crv, address _minter, address _gauge, address _to) external returns(uint256){
         require(msg.sender == operator, "!auth");
         
-        uint256 _balance = IERC20(crv).balanceOf(address(this));
+        //get current balance
+        uint256 _balance = IERC20(_crv).balanceOf(address(this));
         //try mint
         try ICrvMinter(_minter).mint(_gauge){
-            _balance = IERC20(crv).balanceOf(address(this)) - _balance;
-            //only transfer balance that was minted
-            IERC20(crv).safeTransfer(_to, _balance);
+            //get difference
+            _balance = IERC20(_crv).balanceOf(address(this)) - _balance;
+
+            //only transfer balance that was minted(difference) so that lp/gauge tokens can not be affected
+            IERC20(_crv).safeTransfer(_to, _balance);
+
+            return _balance;
         }catch{}
 
-        return _balance;
+        return 0;
     }
 
     function claimRewards(address _gauge) external returns(bool){

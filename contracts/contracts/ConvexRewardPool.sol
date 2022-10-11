@@ -163,7 +163,7 @@ contract ConvexRewardPool {
             uint256 fees = IDeposit(convexBooster).calculatePlatformFees(diff);
             if(fees > 0){
                 //send to booster to process later
-                IERC20(crv).safeTransfer(convexBooster, fees);
+                IERC20(crv).safeTransfer( IDeposit(convexBooster).feeDeposit() , fees);
             }
             bal -= fees;
         }

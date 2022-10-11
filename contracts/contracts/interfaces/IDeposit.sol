@@ -13,5 +13,7 @@ interface IDeposit {
    function setGaugeRedirect(uint256 _pid) external returns(bool);
    function owner() external view returns(address);
    function rewardManager() external view returns(address);
+   function feeDeposit() external view returns(address);
+   function factoryCrv(address _factory) external view returns(address _crv);
    function calculatePlatformFees(uint256 _amount) external view returns(uint256);
 }

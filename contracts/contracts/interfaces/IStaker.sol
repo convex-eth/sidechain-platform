@@ -12,7 +12,7 @@ interface IStaker{
     function release() external;
     function claimRewards(address) external;
     function claimFees(address,address) external;
-    function claimCrv(address _minter, address _gauge, address _to) external;
+    function claimCrv(address _crv, address _minter, address _gauge, address _to) external;
     function setStashAccess(address, bool) external;
     function vote(uint256,address,bool) external;
     function voteGaugeWeight(address,uint256) external;

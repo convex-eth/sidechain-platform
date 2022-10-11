@@ -14,14 +14,12 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 contract FeeDeposit is IFeeDistro{
     using SafeERC20 for IERC20;
 
-    address public immutable crv;
     address public operator;
 
     event WithdrawTo(address indexed user, uint256 amount);
 
-    constructor(address _operator, address _crv) {
+    constructor(address _operator) {
         operator = _operator;
-        crv = _crv;
     }
 
     function setOperator(address _op) external {

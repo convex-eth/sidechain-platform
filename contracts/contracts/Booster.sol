@@ -19,8 +19,6 @@ Handles pool creation, deposits/withdraws, as well as other managment functions 
 contract Booster{
     using SafeERC20 for IERC20;
 
-    address public immutable crv;
-
     uint256 public fees = 1700; //platform fees
     uint256 public constant MaxFees = 2500; //hard code max fees
     uint256 public constant FEE_DENOMINATOR = 10000;
@@ -49,6 +47,7 @@ contract Booster{
 
 
     PoolInfo[] public poolInfo;//list of convex pools, index(pid) -> pool
+    mapping(address => address) public factoryCrv;//map defining CRV token used by a Curve factory
     mapping(address => bool) public gaugeMap;//map defining if a curve gauge is already being used or not
     mapping(uint256 => uint256) public shutdownBalances; //lp balances of a shutdown pool, index(pid) -> lp balance
 
@@ -57,14 +56,13 @@ contract Booster{
     event SetPendingOwner(address indexed _address);
     event OwnerChanged(address indexed _address);
 
-    constructor(address _staker, address _crv) {
+    constructor(address _staker) {
         isShutdown = false;
         staker = _staker;
         owner = msg.sender;
         feeManager = msg.sender;
         poolManager = msg.sender;
         rescueManager = msg.sender;
-        crv = _crv;
     }
 
 
@@ -84,6 +82,15 @@ contract Booster{
         owner = pendingOwner;
         pendingOwner = address(0);
         emit OwnerChanged(owner);
+    }
+
+    //set CRV token address used by a specific Curve pool factory.
+    //While CRV could be set as immutable, there is no guarantee that a side chain token won't be changed.
+    //(for example a new/different bridge platform is used)
+    function setFactoryCrv(address _factory, address _crv) external {
+        require(msg.sender == owner, "!auth");
+        require(_factory != address(0) && _crv != address(0), "invalid");
+        factoryCrv[_factory] = _crv;
     }
 
     //set a fee manager
@@ -160,6 +167,8 @@ contract Booster{
         require(msg.sender==poolManager && !isShutdown, "!add");
         //basic checks
         require(_gauge != address(0) && _lptoken != address(0) && _factory != address(0),"!param");
+        //crv check
+        require(factoryCrv[_factory] != address(0), "!crv");
         //an unused pool
         require(!gaugeMap[_gauge] && !gaugeMap[_lptoken],"gaugeMap");
 
@@ -172,7 +181,7 @@ contract Booster{
         //create a tokenized deposit
         address token = ITokenFactory(tokenFactory).CreateDepositToken(_lptoken);
         //create a reward contract for rewards
-        address newRewardPool = IRewardFactory(rewardFactory).CreateMainRewards(_gauge,token,pid);
+        address newRewardPool = IRewardFactory(rewardFactory).CreateMainRewards(factoryCrv[_factory],_gauge,token,pid);
 
         //add the new pool
         poolInfo.push(
@@ -349,7 +358,8 @@ contract Booster{
         require(msg.sender == rewardContract,"!auth");
 
         //claim crv to rewards
-        IStaker(staker).claimCrv(poolInfo[_pid].factory, _gauge, rewardContract);
+        address _factory = poolInfo[_pid].factory;
+        IStaker(staker).claimCrv(factoryCrv[_factory], _factory, _gauge, rewardContract);
     }
 
     //set a gauge's redirect setting to claim extra rewards directly to a reward contract 
@@ -365,18 +375,4 @@ contract Booster{
         uint256 _fees = _amount * fees / FEE_DENOMINATOR;
         return _fees;
     }
-
-    //claim platform fees
-    function processFees() external {
-        //crv balance: any crv on this contract is considered part of fees
-        uint256 crvBal = IERC20(crv).balanceOf(address(this));
-
-        if (crvBal > 0) {
-            //send to a fee depositor that knows how to process
-            IERC20(crv).safeTransfer(feeDeposit, crvBal);
-            //let the fee depositor know tokens were sent
-            IFeeDistro(feeDeposit).onFeesClaimed();
-        }
-    }
-
 }

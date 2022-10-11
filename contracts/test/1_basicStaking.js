@@ -94,7 +94,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     var usingproxy;
     var found = false;
     while(!found){
-      var newproxy = await VoterProxy.new(crv.address,{from:deployer});
+      var newproxy = await VoterProxy.new({from:deployer});
       console.log("deployed proxy to " +newproxy.address);
       if(newproxy.address.toLowerCase() == voteproxy.toLowerCase()){
         found=true;
@@ -106,7 +106,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("using proxy: " +usingproxy.address);
 
     //deploy booster
-    let booster = await Booster.new(usingproxy.address, crv.address,{from:deployer});
+    let booster = await Booster.new(usingproxy.address,{from:deployer});
     console.log("booster at: " +booster.address);
 
     //set proxy operator
@@ -140,7 +140,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await booster.setRewardManager(rewardManager.address, {from:deployer});
     await booster.rewardManager().then(a=>console.log("reward manager set to " +a));
 
-    let rewardFactory = await RewardFactory.new(booster.address, usingproxy.address, crv.address, pfactory.address,{from:deployer});
+    let rewardFactory = await RewardFactory.new(booster.address, usingproxy.address, pfactory.address,{from:deployer});
     console.log("reward factory at: " +rewardFactory.address);
 
     let rewardImp = await ConvexRewardPool.new({from:deployer});
@@ -151,7 +151,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await booster.setFactories(rewardFactory.address, tokenFactory.address,{from:deployer});
     console.log("booster factories set");
 
-    let feedeposit = await FeeDeposit.new(deployer, crv.address);
+    let feedeposit = await FeeDeposit.new(deployer);
     console.log("fee deposit at: " +feedeposit.address);
     await booster.setFeeDeposit(feedeposit.address, {from:deployer});
     console.log("fee deposit set on booster");
@@ -167,6 +167,8 @@ contract("Deploy System and test staking/rewards", async accounts => {
     let curvepool = "0x960ea3e3C7FB317332d990873d354E18d7645590";
     let curvePoolFactory = "0xabC000d88f23Bb45525E447528DBF656A9D55bf5";
 
+    await booster.setFactoryCrv(curvePoolFactory, crv.address, {from:deployer});
+    console.log("set crv address for factory " +curvePoolFactory);
 
     await booster.addPool(curvelp.address, gauge.address, curvePoolFactory,{from:deployer});
     console.log("pool added");
@@ -252,8 +254,9 @@ contract("Deploy System and test staking/rewards", async accounts => {
 
     await crv.balanceOf(feedeposit.address).then(a=>console.log("crv on fee deposit: " +a))
 
-    await booster.processFees();
-    console.log("fees processed")
+    // await booster.processFees();
+    // console.log("fees processed")
+    console.log("(fees auto sent to deposit and not booster)")
 
     await crv.balanceOf(booster.address).then(a=>console.log("crv on fee booster: " +a))
     await crv.balanceOf(feedeposit.address).then(a=>console.log("crv on fee deposit: " +a))
