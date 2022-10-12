@@ -2,7 +2,6 @@
 pragma solidity 0.8.10;
 
 import "./interfaces/IGauge.sol";
-import "./interfaces/IStash.sol";
 import "./interfaces/IBooster.sol";
 import "./interfaces/IRewardHook.sol";
 import "./interfaces/IRewardManager.sol";
