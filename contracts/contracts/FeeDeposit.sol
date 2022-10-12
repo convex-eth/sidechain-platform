@@ -9,7 +9,7 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 /*
     Process receieved fees to send back to mainnet
 
-    TODO: briding process, just hold fees for now
+    TODO: bridging process, just hold fees for now
 */
 contract FeeDeposit is IFeeDistro{
     using SafeERC20 for IERC20;
@@ -27,8 +27,9 @@ contract FeeDeposit is IFeeDistro{
         operator = _op;
     }
     
-    function onFeesClaimed() external{
+    function processFees() external{
         //process fees
+        //do nothing for this temporary implementation
     }
 
     function withdrawTo(IERC20 _asset, uint256 _amount, address _to) external {
