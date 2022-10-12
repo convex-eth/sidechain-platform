@@ -7,14 +7,11 @@ interface IRewards{
     function withdraw(address, uint256) external;
     function setWeight(address _pool, uint256 _amount) external returns(bool);
     function setDistributor(address _distro, bool _valid) external;
-    function exit(address) external;
     function getReward(address) external;
     function queueNewRewards(uint256) external;
-    function notifyRewardAmount(uint256) external;
     function addExtraReward(address) external;
     function setRewardHook(address) external;
     function user_checkpoint(address _account) external returns(bool);
-    function stakingToken() external view returns (address);
     function rewardToken() external view returns(address);
     function rewardMap(address) external view returns(bool);
     function earned(address account) external view returns (uint256);

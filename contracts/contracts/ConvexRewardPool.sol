@@ -12,6 +12,8 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 //claim and distribute gauge rewards without need of harvesters
 //more gas cost but no delayed rewards
+//
+//Reward distro based on Curve.fi's gauge wrapper implementations at https://github.com/curvefi/curve-dao-contracts/tree/master/contracts/gauges/wrappers
 contract ConvexRewardPool {
     using SafeERC20 for IERC20;
 
