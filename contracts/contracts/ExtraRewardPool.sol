@@ -40,7 +40,7 @@ pragma solidity 0.8.10;
 */
 
 import "./interfaces/MathUtil.sol";
-import "./interfaces/IDeposit.sol";
+import "./interfaces/IBooster.sol";
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
@@ -89,7 +89,7 @@ contract ExtraRewardPool {
     }
 
     function rewardManager() public view returns(address){
-        return IDeposit(booster).rewardManager();
+        return IBooster(booster).rewardManager();
     }
 
     function setDistributor(address _distro, bool _valid) external {

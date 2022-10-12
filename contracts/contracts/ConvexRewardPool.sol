@@ -3,7 +3,7 @@ pragma solidity 0.8.10;
 
 import "./interfaces/IGauge.sol";
 import "./interfaces/IStash.sol";
-import "./interfaces/IDeposit.sol";
+import "./interfaces/IBooster.sol";
 import "./interfaces/IRewardHook.sol";
 import "./interfaces/IRewardManager.sol";
 
@@ -80,7 +80,7 @@ contract ConvexRewardPool {
         _insertRewardToken(_crv);
 
         //add CVX in second slot
-        address rmanager = IDeposit(convexBooster).rewardManager();
+        address rmanager = IBooster(convexBooster).rewardManager();
         _insertRewardToken(IRewardManager(rmanager).cvx());
 
         //set default hook
@@ -103,7 +103,7 @@ contract ConvexRewardPool {
     // (any new incentive that is not directly on curve gauges)
     function addExtraReward(address _token) external{
         //owner of booster can set extra rewards
-        require(IDeposit(convexBooster).rewardManager() == msg.sender, "!owner");
+        require(IBooster(convexBooster).rewardManager() == msg.sender, "!owner");
         
         //add to reward list
         _insertRewardToken(_token);
@@ -125,7 +125,7 @@ contract ConvexRewardPool {
 
     function setRewardHook(address _hook) external{
         //owner of booster can set reward hook
-        require(IDeposit(convexBooster).rewardManager() == msg.sender, "!owner");
+        require(IBooster(convexBooster).rewardManager() == msg.sender, "!owner");
         rewardHook = _hook;
     }
 
@@ -134,7 +134,7 @@ contract ConvexRewardPool {
         updateRewardList();
 
         //claim crv
-        IDeposit(convexBooster).claimCrv(convexPoolId, curveGauge);
+        IBooster(convexBooster).claimCrv(convexPoolId, curveGauge);
 
         //claim rewards from gauge
         IGauge(curveGauge).claim_rewards(convexStaker);
@@ -160,10 +160,10 @@ contract ConvexRewardPool {
         //if reward token is crv (always slot 0), need to calculate fees
         if(_index == 0){
             uint256 diff = bal - reward.reward_remaining;
-            uint256 fees = IDeposit(convexBooster).calculatePlatformFees(diff);
+            uint256 fees = IBooster(convexBooster).calculatePlatformFees(diff);
             if(fees > 0){
-                //send to booster to process later
-                IERC20(crv).safeTransfer( IDeposit(convexBooster).feeDeposit() , fees);
+                //send to fee deposit to process later
+                IERC20(crv).safeTransfer( IBooster(convexBooster).feeDeposit() , fees);
             }
             bal -= fees;
         }
@@ -254,7 +254,7 @@ contract ConvexRewardPool {
             // crv is always slot 0
             if(i == 0){
                 //check fees
-                uint256 fees = IDeposit(convexBooster).calculatePlatformFees(d_reward);
+                uint256 fees = IBooster(convexBooster).calculatePlatformFees(d_reward);
                 if(fees > 0){
                     d_reward -= fees;
                 }
@@ -361,8 +361,8 @@ contract ConvexRewardPool {
         _totalSupply -= amount;
         _balances[msg.sender] -= amount;
 
-        //tell convexBooster to withdraw from here directly to user
-        IDeposit(convexBooster).withdrawTo(convexPoolId,amount,msg.sender);
+        //tell booster to withdraw underlying lp tokens directly to user
+        IBooster(convexBooster).withdrawTo(convexPoolId,amount,msg.sender);
 
         emit Withdrawn(msg.sender, amount);
 

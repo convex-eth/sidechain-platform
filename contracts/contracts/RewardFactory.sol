@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.10;
 
-import "./interfaces/IDeposit.sol";
+import "./interfaces/IBooster.sol";
 import "./interfaces/IProxyFactory.sol";
 import "./interfaces/IConvexRewardPool.sol";
 
@@ -22,7 +22,7 @@ contract RewardFactory {
     }
 
     function setImplementation(address _imp) external{
-        require(msg.sender == IDeposit(operator).owner(),"!auth");
+        require(msg.sender == IBooster(operator).owner(),"!auth");
 
         mainImplementation = _imp;
     }

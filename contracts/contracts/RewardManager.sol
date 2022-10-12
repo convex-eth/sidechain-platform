@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.10;
 
-import "./interfaces/IDeposit.sol";
+import "./interfaces/IBooster.sol";
 import "./interfaces/IRewards.sol";
 import "./interfaces/IRewardHook.sol";
 
@@ -36,7 +36,7 @@ contract RewardManager{
     }
 
     function owner() public view returns(address){
-        return IDeposit(booster).owner();
+        return IBooster(booster).owner();
     }
 
     //set default pool hook

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.10;
 
-import "./interfaces/IDeposit.sol";
+import "./interfaces/IBooster.sol";
 import "./interfaces/IGauge.sol";
 import "./interfaces/IVoting.sol";
 import "./interfaces/ICrvMinter.sol";
@@ -48,7 +48,7 @@ contract VoterProxy {
 
     function setOperator(address _operator) external {
         require(msg.sender == owner, "!auth");
-        require(operator == address(0) || IDeposit(operator).isShutdown() == true, "needs shutdown");
+        require(operator == address(0) || IBooster(operator).isShutdown() == true, "needs shutdown");
         
         operator = _operator;
     }
