@@ -15,8 +15,7 @@ contract VoterProxy {
     address public pendingOwner;
     address public operator;
     
-    // mapping (address => bool) private stashPool;
-    mapping (address => bool) private protectedTokens;
+    mapping (address => bool) public protectedTokens;
 
     event SetPendingOwner(address indexed _address);
     event OwnerChanged(address indexed _address);

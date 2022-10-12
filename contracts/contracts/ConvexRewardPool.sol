@@ -151,7 +151,7 @@ contract ConvexRewardPool {
         return rewards.length;
     }
 
-    function _calcRewardIntegral(uint256 _index, address _account, address _forwardTo) internal{
+    function _calcRewardIntegral(uint256 _index, address _account, address _claimTo) internal{
         RewardType storage reward = rewards[_index];
 
         //get difference in balance and remaining rewards
@@ -176,14 +176,14 @@ contract ConvexRewardPool {
         //update user integrals
         // uint userI = reward.reward_integral_for[_account];
         uint userI = reward_integral_for[reward.reward_token][_account];
-        if(_forwardTo != address(0) || userI < reward.reward_integral){
-            //forward to address non-zero means its a claim 
-            if(_forwardTo != address(0)){
+        if(_claimTo != address(0) || userI < reward.reward_integral){
+            //_claimTo address non-zero means its a claim 
+            if(_claimTo != address(0)){
                 uint256 receiveable = claimable_reward[reward.reward_token][_account] + (_balances[_account] * uint256(reward.reward_integral - userI) / 1e20);
                 if(receiveable > 0){
                     claimable_reward[reward.reward_token][_account] = 0;
-                    IERC20(reward.reward_token).safeTransfer(_forwardTo, receiveable);
-                    emit RewardPaid(_account, reward.reward_token, _forwardTo, receiveable);
+                    IERC20(reward.reward_token).safeTransfer(_claimTo, receiveable);
+                    emit RewardPaid(_account, reward.reward_token, _claimTo, receiveable);
                     bal -= receiveable;
                 }
             }else{
@@ -200,23 +200,18 @@ contract ConvexRewardPool {
     }
 
     function _checkpoint(address _account) internal {
-        //update rewards and claim
-        updateRewardsAndClaim();
-
-        uint256 rewardCount = rewards.length;
-        for (uint256 i = 0; i < rewardCount; i++) {
-           _calcRewardIntegral(i,_account,address(0));
-        }
+        //checkpoint without claiming by passing address(0)
+        _checkpoint(_account, address(0));
     }
 
-    function _checkpointAndClaim(address _account, address _forwardTo) internal {
+    function _checkpoint(address _account, address _claimTo) internal {
         //update rewards and claim
         updateRewardsAndClaim();
 
         //calc reward integrals
         uint256 rewardCount = rewards.length;
         for(uint256 i = 0; i < rewardCount; i++){
-           _calcRewardIntegral(i,_account,_forwardTo);
+           _calcRewardIntegral(i,_account,_claimTo);
         }
     }
 
@@ -275,7 +270,7 @@ contract ConvexRewardPool {
     //claim reward for given account (unguarded)
     function getReward(address _account) external {
         //claim directly in checkpoint logic to save a bit of gas
-        _checkpointAndClaim(_account, _account);
+        _checkpoint(_account, _account);
     }
 
     //claim reward for given account and forward (guarded)
@@ -283,7 +278,7 @@ contract ConvexRewardPool {
         require(msg.sender == _account, "!self");
         //claim directly in checkpoint logic to save a bit of gas
         //pack forwardTo into account array to save gas so that a proxy etc doesnt have to double transfer
-        _checkpointAndClaim(_account,_forwardTo);
+        _checkpoint(_account,_forwardTo);
     }
 
     //Deposit/Stake
@@ -327,15 +322,11 @@ contract ConvexRewardPool {
     }
 
     //Withdraw
-
     function withdraw(uint256 amount, bool claim) public returns(bool){
         require(amount > 0, 'RewardPool : Cannot withdraw 0');
 
-        if(claim){
-            _checkpointAndClaim(msg.sender, msg.sender);
-        }else{
-            _checkpoint(msg.sender);
-        }
+        //checkpoint first, if claim add claim address
+        _checkpoint(msg.sender, claim ? msg.sender : address(0));
 
         _totalSupply -= amount;
         _balances[msg.sender] -= amount;
@@ -353,11 +344,8 @@ contract ConvexRewardPool {
 
     function withdrawAndUnwrap(uint256 amount, bool claim) public returns(bool){
 
-        if(claim){
-            _checkpointAndClaim(msg.sender, msg.sender);
-        }else{
-            _checkpoint(msg.sender);
-        }
+        //checkpoint first, if claim add claim address
+        _checkpoint(msg.sender, claim ? msg.sender : address(0));
         
         _totalSupply -= amount;
         _balances[msg.sender] -= amount;
