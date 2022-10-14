@@ -345,21 +345,24 @@ contract Booster{
         return true;
     }
 
-    //allow reward contracts to send here and withdraw to user
+    //allow reward contracts to withdraw directly to user
     function withdrawTo(uint256 _pid, uint256 _amount, address _to) external returns(bool){
+        //require sender to be the reward contract for a given pool
         address rewardContract = poolInfo[_pid].rewards;
         require(msg.sender == rewardContract,"!auth");
 
+        //withdraw from reward contract and forward underlying to user
         _withdraw(_pid,_amount,msg.sender,_to);
         return true;
     }
 
     //claim crv for a pool from the pool's factory and send to rewards
     function claimCrv(uint256 _pid, address _gauge) external{
+        //can only be called by the pool's reward contract
         address rewardContract = poolInfo[_pid].rewards;
         require(msg.sender == rewardContract,"!auth");
 
-        //claim crv to rewards
+        //claim crv and redirect to the reward contract
         address _factory = poolInfo[_pid].factory;
         IStaker(staker).claimCrv(factoryCrv[_factory], _factory, _gauge, rewardContract);
     }
