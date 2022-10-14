@@ -81,16 +81,20 @@ contract VoterProxy {
         return balance;
     }
 
-    // Withdraw partial funds
+    // Withdraw partial funds from a gauge
     function withdraw(address _token, address _gauge, uint256 _amount) public returns(bool){
         require(msg.sender == operator, "!auth");
 
+        //withdraw from the given gauge and return given tokens
+        //because this is withdrawing protectedTokens,
+        //legitimacy of request must be enforced on operator side
         IGauge(_gauge).withdraw(_amount);
         IERC20(_token).safeTransfer(msg.sender, _amount);
         return true;
     }
 
-     function withdrawAll(address _token, address _gauge) external returns(bool){
+    //withdraw all funds from a gauge
+    function withdrawAll(address _token, address _gauge) external returns(bool){
         require(msg.sender == operator, "!auth");
         uint256 amount = balanceOfPool(_gauge);
         withdraw(_token, _gauge, amount);
@@ -107,7 +111,8 @@ contract VoterProxy {
             //get difference
             _balance = IERC20(_crv).balanceOf(address(this)) - _balance;
 
-            //only transfer balance that was minted(difference) so that lp/gauge tokens can not be affected
+            //only transfer balance that was minted(difference)
+            //because difference is checked, lp/gauge tokens can not be affected
             IERC20(_crv).safeTransfer(_to, _balance);
 
             return _balance;

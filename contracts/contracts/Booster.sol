@@ -47,7 +47,7 @@ contract Booster{
 
     PoolInfo[] public poolInfo;//list of convex pools, index(pid) -> pool
     mapping(address => address) public factoryCrv;//map defining CRV token used by a Curve factory
-    mapping(address => bool) public gaugeMap;//map defining if a curve gauge is already being used or not
+    mapping(address => bool) public activeMap;//map defining if a curve gauge/lp token is already being used or not
     mapping(uint256 => uint256) public shutdownBalances; //lp balances of a shutdown pool, index(pid) -> lp balance
 
     event Deposited(address indexed user, uint256 indexed poolid, uint256 amount);
@@ -162,7 +162,7 @@ contract Booster{
         //crv check
         require(factoryCrv[_factory] != address(0), "!crv");
         //an unused pool
-        require(!gaugeMap[_gauge] && !gaugeMap[_lptoken],"already reg");
+        require(!activeMap[_gauge] && !activeMap[_lptoken],"already reg");
 
         //check that the given factory is indeed tied with the gauge
         require(IPoolFactory(_factory).is_valid_gauge(_gauge),"!factory gauge");
@@ -187,7 +187,9 @@ contract Booster{
             })
         );
         //set gauge as being used
-        gaugeMap[_gauge] = true;
+        activeMap[_gauge] = true;
+        //also set the lp token as used
+        activeMap[_lptoken] = true;
 
         //set gauge redirect
         setGaugeRedirect(_gauge, newRewardPool);
@@ -231,8 +233,9 @@ contract Booster{
 
         //flag pool as shutdown
         pool.shutdown = true;
-        //reset gauge map
-        gaugeMap[pool.gauge] = false;
+        //reset active map
+        activeMap[pool.gauge] = false;
+        activeMap[pool.lptoken] = false;
         return true;
     }
 
@@ -301,12 +304,19 @@ contract Booster{
         ITokenMinter(token).burn(_from,_amount);
 
         //pull from gauge if not shutdown
-        // if shutdown tokens will be in this contract
         if (!pool.shutdown) {
+            //get prev balance to double check difference
             uint256 lpbalance = IERC20(lptoken).balanceOf(address(this));
+
+            //because of activeMap, a gauge and its lp token can only be assigned to a single unique pool
+            //thus claims for withdraw here are enforced to be the correct pair
             IStaker(staker).withdraw(lptoken, gauge, _amount);
+
+            //also check that the amount returned was correct
+            //which will safegaurd pools that have been shutdown
             require(IERC20(lptoken).balanceOf(address(this)) - lpbalance >= _amount, "withdraw amount fail");
         }else{
+            //if shutdown, tokens will be held in this contract
             //remove from shutdown balances. revert if not enough
             //would only revert if something was wrong with the pool
             //and shutdown didnt return lp tokens

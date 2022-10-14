@@ -57,7 +57,7 @@ The Reward Manager can:
 	- Define what address is used for the CVX token on the local chain
 	- Add extra/outside rewards to a staking contract that are not on the curve gauge directly (ex. adding CVX rewards to a pool)
 	- Can define a "hook" used by the staking contract to claim outside rewards.
-	- Can define weights on ExtraRewrdPool to set which pools get how much of a specific reward (ex. A single CVX reward contract that splits its weight between multiple curve pools )
+	- Can define weights on ExtraRewardPool to set which pools get how much of a specific reward (ex. A single CVX reward contract that splits its weight between multiple curve pools )
 
 ### ConvexRewardPool
 The ConvexRewardPool is the main staking and reward contract.  Users will deposit their LP tokens to the booster and receive a receipt token(Convex Deposit Token).  This receipt token can be staked on the ConvexRewardPool to start receiving rewards.  Unlike the reward contract on mainnet, this contract does not require a periodic update of rewards via a "harvester".  In order to do this, all actions (deposit, withdraw, claim) must claim rewards from all sources and update reward balances before making any changes.  The contract will look at the difference of previous claim balances and new balances to determine distribution ratio.  To that extent, this contract has no sense of "reward rate" and is agnostic as to how the various rewards make it into the contract.  Thus calculating reward rates must be down at the individual reward source level.
