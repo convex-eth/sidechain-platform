@@ -136,21 +136,35 @@ contract ExtraRewardPool {
     }
 
 
-    //increase reward weight for a  given pool
+    //increase reward weight for a given pool
     //used by reward manager
-    function setWeight(address _account, uint256 _amount)
-        public
+    function setWeight(address _account, uint256 _amount) external returns(bool){
+        require(msg.sender == rewardManager(), "!authorized");
+        return _setWeight(_account, _amount);
+    }
+
+    //increase reward weight for a list of pools
+    //used by reward manager
+    function setWeights(address[] calldata _account, uint256[] calldata _amount) external{
+        require(msg.sender == rewardManager(), "!authorized");
+
+        for(uint256 i = 0; i < _account.length; i++){
+            _setWeight(_account[i], _amount[i]);
+        }
+    }
+
+    //internal set weight
+    function _setWeight(address _account, uint256 _amount)
+        internal
         updateReward(_account)
         returns(bool)
     {
-        require(msg.sender == rewardManager(), "!authorized");
-
         emit WeightSet(_account, _balances[_account], _amount);
 
         uint256 tsupply = _totalSupply;
-        tsupply -= _balances[_account]; //remove current
-        _balances[_account] = _amount; //set new
-        tsupply += _amount; //add new to supply
+        tsupply -= _balances[_account]; //remove current from temp supply
+        _balances[_account] = _amount; //set new account balance
+        tsupply += _amount; //add new to temp supply
         _totalSupply = tsupply; //set supply
 
         //work around to correct earned() function on ConvexRewardPool for a new reward type
