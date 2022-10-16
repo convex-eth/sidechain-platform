@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.10;
 
-import "./interfaces/IPools.sol";
+import "./interfaces/IBooster.sol";
 import "./interfaces/IGauge.sol";
 
 /*
@@ -10,23 +10,24 @@ Pool Manager
 contract PoolManager{
 
     address public operator;
-    address public immutable pools;
+    address public immutable booster;
 
 
-    constructor(address _pools){
+    constructor(address _booster){
         operator = msg.sender;
-        pools = _pools;
+        booster = _booster;
     }
 
+    //set operator/admin
     function setOperator(address _operator) external {
         require(msg.sender == operator, "!auth");
         operator = _operator;
     }
 
-    //revert control of adding  pools back to operator
+    //revert role of PoolManager back to operator
     function revertControl() external{
         require(msg.sender == operator, "!auth");
-        IPools(pools).setPoolManager(operator);
+        IBooster(booster).setPoolManager(operator);
     }
 
     //add a new curve pool to the system.
@@ -39,15 +40,16 @@ contract PoolManager{
         address lptoken = IGauge(_gauge).lp_token();
         require(lptoken != address(0),"no token");
         
-        IPools(pools).addPool(lptoken,_gauge,_factory);
+        IBooster(booster).addPool(lptoken,_gauge,_factory);
 
         return true;
     }
 
+    //shutdown a pool
     function shutdownPool(uint256 _pid) external returns(bool){
         require(msg.sender==operator, "!auth");
 
-        IPools(pools).shutdownPool(_pid);
+        IBooster(booster).shutdownPool(_pid);
         return true;
     }
 

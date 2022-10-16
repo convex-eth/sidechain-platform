@@ -300,7 +300,7 @@ contract ConvexRewardPool is ReentrancyGuard{
         _checkpoint(_account,_forwardTo);
     }
 
-    //Deposit/Stake
+    //Deposit/Stake a given amount
     function stake(uint256 _amount) public nonReentrant returns(bool){
         require(_amount > 0, 'RewardPool : Cannot stake 0');
         
@@ -319,12 +319,14 @@ contract ConvexRewardPool is ReentrancyGuard{
         return true;
     }
 
+    //stake/deposit entire balance
     function stakeAll() external returns(bool){
         uint256 balance = IERC20(convexToken).balanceOf(msg.sender);
         stake(balance);
         return true;
     }
 
+    //deposit/stake on behalf of another account
     function stakeFor(address _for, uint256 _amount) external nonReentrant returns(bool){
         require(_amount > 0, 'RewardPool : Cannot stake 0');
         
@@ -344,7 +346,7 @@ contract ConvexRewardPool is ReentrancyGuard{
         return true;
     }
 
-    //Withdraw
+    //Withdraw a given amount. Can choose not to claim
     function withdraw(uint256 amount, bool claim) public nonReentrant returns(bool){
         require(amount > 0, 'RewardPool : Cannot withdraw 0');
 
@@ -363,10 +365,12 @@ contract ConvexRewardPool is ReentrancyGuard{
         return true;
     }
 
+    //withdraw full balance
     function withdrawAll(bool claim) external{
         withdraw(_balances[msg.sender],claim);
     }
 
+    //withdraw balance and unwrap to the underlying lp token
     function withdrawAndUnwrap(uint256 amount, bool claim) public nonReentrant returns(bool){
 
         //checkpoint first, if claim add claim address
@@ -385,6 +389,7 @@ contract ConvexRewardPool is ReentrancyGuard{
         return true;
     }
 
+    //withdraw full balance and unwrap to the underlying lp token
     function withdrawAllAndUnwrap(bool claim) external{
         withdrawAndUnwrap(_balances[msg.sender],claim);
     }

@@ -80,6 +80,7 @@ contract ExtraRewardPool {
         booster = _booster;
     }
 
+    //initialize minimal proxy
     function initialize(
         address rewardToken_
     ) external {
@@ -88,24 +89,29 @@ contract ExtraRewardPool {
         rewardToken = IERC20(rewardToken_);
     }
 
+    //get reward manager/admin from booster
     function rewardManager() public view returns(address){
         return IBooster(booster).rewardManager();
     }
 
+    //set a distributor address
     function setDistributor(address _distro, bool _valid) external {
         require(msg.sender == rewardManager(), "!authorized");
         distributors[_distro] = _valid;
         emit AddDistributor(_distro, _valid);
     }
 
+    //total supply
     function totalSupply() public view returns (uint256) {
         return _totalSupply;
     }
 
+    //balance of an account
     function balanceOf(address _account) public view returns (uint256) {
         return _balances[_account];
     }
 
+    //checkpoint earned rewards modifier
     modifier updateReward(address _account) {
         rewardPerTokenStored = rewardPerToken();
         lastUpdateTime = lastTimeRewardApplicable();
@@ -116,14 +122,17 @@ contract ExtraRewardPool {
         _;
     }
 
+    //checkpoint a given user
     function user_checkpoint(address _account) public updateReward(_account){
 
     }
 
+    //claim time to period finish
     function lastTimeRewardApplicable() public view returns (uint256) {
         return MathUtil.min(block.timestamp, periodFinish);
     }
 
+    //rewards per weight
     function rewardPerToken() public view returns (uint256) {
         if (totalSupply() == 0) {
             return rewardPerTokenStored;
@@ -131,6 +140,7 @@ contract ExtraRewardPool {
         return rewardPerTokenStored + ((lastTimeRewardApplicable() - lastUpdateTime) * rewardRate * 1e18 / totalSupply());
     }
 
+    //earned rewards for given account
     function earned(address _account) public view returns (uint256) {
         return rewards[_account] + (balanceOf(_account) * (rewardPerToken() - userRewardPerTokenPaid[_account]) / 1e18);
     }
@@ -172,6 +182,7 @@ contract ExtraRewardPool {
         return true;
     }
 
+    //get reward for given account (unguarded)
     function getReward(address _account) public updateReward(_account) returns(bool){
         uint256 reward = earned(_account);
         if (reward > 0) {
@@ -182,25 +193,31 @@ contract ExtraRewardPool {
         return true;
     }
 
+    //outside address add to rewards
     function donate(uint256 _amount) external returns(bool){
         IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), _amount);
         queuedRewards += _amount;
         return true;
     }
 
+    //whitelisted distributors can add more rewards and start new reward cycle
     function queueNewRewards(uint256 _rewards) external returns(bool){
         require(distributors[msg.sender], "!distro");
 
+        //pull
         if(_rewards > 0){
             IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), _rewards);
         }
 
+        //notify pulled + queued
         notifyRewardAmount(_rewards + queuedRewards);
+        //reset queued
         queuedRewards = 0;
         return true;
     }
 
 
+    //internal: start new reward cycle
     function notifyRewardAmount(uint256 reward)
         internal
         updateReward(address(0))
