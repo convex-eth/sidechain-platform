@@ -7,7 +7,8 @@ import "./interfaces/IRewardHook.sol";
 
 
 /*
-    Hook pools call to perform extra actions when updating rewards
+    A Hook contract that pools call to perform extra actions when updating rewards
+    (Example: claiming extra rewards from an outside contract)
 */
 contract PoolRewardHook is IRewardHook{
 
@@ -21,14 +22,17 @@ contract PoolRewardHook is IRewardHook{
         booster = _booster;
     }
 
+    //get reward manager role from booster to use as admin
     function rewardManager() public view returns(address){
         return IBooster(booster).rewardManager();
     }
 
+    //get reward contract list count for given pool/account
     function poolRewardLength(address _pool) external view returns(uint256){
         return poolRewardList[_pool].length;
     }
 
+    //clear reward contract list for given pool/account
     function clearPoolRewardList(address _pool) external{
         require(msg.sender == rewardManager(), "!rmanager");
 
@@ -36,6 +40,7 @@ contract PoolRewardHook is IRewardHook{
         emit PoolRewardReset(_pool);
     }
 
+    //add a reward contract to the list of contracts for a given pool/account
     function addPoolReward(address _pool, address _rewardContract) external{
         require(msg.sender == rewardManager(), "!rmanager");
 
@@ -43,10 +48,13 @@ contract PoolRewardHook is IRewardHook{
         emit PoolRewardAdded(_pool, _rewardContract);
     }
 
+    //call all reward contracts to claim. (unguarded)
     function onRewardClaim() external{
         uint256 rewardLength = poolRewardList[msg.sender].length;
         for(uint256 i = 0; i < rewardLength; i++){
-            IRewards(poolRewardList[msg.sender][i]).getReward(msg.sender);
+            //use try-catch as this could be a 3rd party contract
+            try IRewards(poolRewardList[msg.sender][i]).getReward(msg.sender){
+            }catch{}
         }
     }
 
