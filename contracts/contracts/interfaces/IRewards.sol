@@ -6,6 +6,7 @@ interface IRewards{
     function stakeFor(address, uint256) external;
     function withdraw(address, uint256) external;
     function setWeight(address _pool, uint256 _amount) external returns(bool);
+    function setWeights(address[] calldata _account, uint256[] calldata _amount) external;
     function setDistributor(address _distro, bool _valid) external;
     function getReward(address) external;
     function queueNewRewards(uint256) external;

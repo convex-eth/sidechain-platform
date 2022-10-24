@@ -20,6 +20,7 @@ contract DepositToken is ERC20 {
     }
 
     function initialize(address _lptoken) external {
+        require(bytes(_tokenname).length == 0, "already init");
         _tokenname = string(abi.encodePacked(ERC20(_lptoken).name()," Convex Deposit"));
         _tokensymbol = string(abi.encodePacked("cvx", ERC20(_lptoken).symbol()));
     }

@@ -177,8 +177,6 @@ contract ExtraRewardPool {
         tsupply += _amount; //add new to temp supply
         _totalSupply = tsupply; //set supply
 
-        //work around to correct earned() function on ConvexRewardPool for a new reward type
-        rewardToken.safeTransfer(_account, 0);
         return true;
     }
 

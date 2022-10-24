@@ -123,6 +123,11 @@ contract ConvexRewardPool is ReentrancyGuard{
             RewardType storage r = rewards.push();
             r.reward_token = _token;
             rewardMap[_token] = true;
+
+            //workaround: transfer 0 to self so that earned() reports correctly
+            //with new tokens
+            try IERC20(_token).transfer(address(this), 0){}catch{}
+
             emit RewardAdded(_token);
         }
     }

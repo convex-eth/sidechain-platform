@@ -186,12 +186,13 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await curvelpCheck.decimals().then(a=>console.log("decimals = " +a))
 
 
-    var depositTokenCheck = await ERC20.at(poolInfo.token);
+    var depositTokenCheck = await DepositToken.at(poolInfo.token);
     console.log("deposit token: ")
     console.log("address: " +depositTokenCheck.address);
     await depositTokenCheck.name().then(a=>console.log("name = " +a))
     await depositTokenCheck.symbol().then(a=>console.log("symbol = " +a))
     await depositTokenCheck.decimals().then(a=>console.log("decimals = " +a))
+    await depositTokenCheck.initialize(poolInfo.lptoken).catch(a=>console.log("catch reinit on deposit token: " +a))
 
 
     var rpool = await ConvexRewardPool.at(poolInfo.rewards);
@@ -227,6 +228,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await curvelp.approve(booster.address,web3.utils.toWei("1000000.0", "ether"), {from:userA} );
     console.log("approved lp to booster");
 
+    await booster.depositAll(4, true, {from:userA}).catch(a=>console.log("caught bad pid: " +a));
     await booster.depositAll(0, true, {from:userA});
     console.log("deposit and staked in booster");
 
@@ -320,7 +322,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await extrapool.rewardRate().then(a=>console.log("rewardRate is: " +a))
 
     await extrapool.balanceOf(rpool.address).then(a=>console.log("weight of pool: " +a))
-    await rewardManager.setPoolWeight(rpool.address, extrapool.address, web3.utils.toWei("1.0", "ether"), {from:deployer});
+    await rewardManager.setPoolWeight(extrapool.address, rpool.address, web3.utils.toWei("1.0", "ether"), {from:deployer});
     console.log("set weight");
     await extrapool.balanceOf(rpool.address).then(a=>console.log("weight of pool: " +a))
 

@@ -54,6 +54,7 @@ contract Booster{
     event Withdrawn(address indexed user, uint256 indexed poolid, uint256 amount);
     event SetPendingOwner(address indexed _address);
     event OwnerChanged(address indexed _address);
+    event CrvFactorySet(address indexed _factory, address _crv);
 
     constructor(address _staker) {
         isShutdown = false;
@@ -75,7 +76,7 @@ contract Booster{
 
     //claim ownership
     function acceptPendingOwner() external {
-        require(pendingOwner != address(0) && msg.sender == pendingOwner, "!p_owner");
+        require(msg.sender == pendingOwner, "!p_owner");
 
         owner = pendingOwner;
         pendingOwner = address(0);
@@ -89,6 +90,8 @@ contract Booster{
         require(msg.sender == owner, "!auth");
         require(_factory != address(0) && _crv != address(0), "invalid");
         factoryCrv[_factory] = _crv;
+
+        emit CrvFactorySet(_factory, _crv);
     }
 
     //set a pool manager

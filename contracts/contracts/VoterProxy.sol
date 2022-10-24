@@ -37,7 +37,7 @@ contract VoterProxy {
 
     //claim ownership
     function acceptPendingOwner() external {
-        require(pendingOwner != address(0) && msg.sender == pendingOwner, "!p_owner");
+        require(msg.sender == pendingOwner, "!p_owner");
 
         owner = pendingOwner;
         pendingOwner = address(0);
@@ -59,9 +59,10 @@ contract VoterProxy {
         if(protectedTokens[_gauge] == false){
             protectedTokens[_gauge] = true;
         }
-        // uint256 balance = IERC20(_token).balanceOf(address(this));
+
         if (_amount > 0) {
-            IERC20(_token).approve(_gauge, _amount);
+            IERC20(_token).safeApprove(_gauge, 0);
+            IERC20(_token).safeApprove(_gauge, _amount);
             IGauge(_gauge).deposit(_amount);
         }
         return true;

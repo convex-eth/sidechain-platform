@@ -20,9 +20,8 @@ contract RewardManager{
     address public rewardHook;
     address public immutable cvx;
 
-    // mapping(address => address[]) public poolRewardList;
-
-    event PoolWeight(address indexed pool, address indexed rewardContract, uint256 weight);
+    event PoolWeight(address indexed rewardContract, address indexed pool, uint256 weight);
+    event PoolWeights(address indexed rewardContract, address[] pool, uint256[] weight);
     event PoolRewardToken(address indexed pool, address token);
     event PoolRewardContract(address indexed pool, address indexed hook, address rcontract);
     event PoolRewardContractClear(address indexed pool, address indexed hook);
@@ -72,11 +71,19 @@ contract RewardManager{
     }
 
     //set pool weight on a given extra reward contract
-    function setPoolWeight(address _pool, address _rewardContract, uint256 _weight) external{
+    function setPoolWeight(address _rewardContract, address _pool, uint256 _weight) external{
         require(msg.sender == owner(), "!auth");
 
         IRewards(_rewardContract).setWeight(_pool, _weight);
-        emit PoolWeight(_pool, _rewardContract, _weight);
+        emit PoolWeight(_rewardContract, _pool, _weight);
+    }
+
+    //set pool weights on a given extra reward contracts
+    function setPoolWeights(address _rewardContract, address[] calldata _pools, uint256[] calldata _weights) external{
+        require(msg.sender == owner(), "!auth");
+
+        IRewards(_rewardContract).setWeights(_pools, _weights);
+        emit PoolWeights(_rewardContract, _pools, _weights);
     }
 
     //update a pool's reward hook
