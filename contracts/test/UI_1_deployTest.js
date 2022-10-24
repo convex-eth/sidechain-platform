@@ -108,6 +108,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     //deploy booster
     let booster = await Booster.new(usingproxy.address,{from:deployer});
     console.log("booster at: " +booster.address);
+    contractList.arbitrum.system.booster = booster.address;
 
     //set proxy operator
     await usingproxy.setOperator(booster.address,{from:deployer});
@@ -116,24 +117,33 @@ contract("Deploy System and test staking/rewards", async accounts => {
     //deploy proxy factory
     let pfactory = await ProxyFactory.new({from:deployer});
     console.log("pfactory at: " +pfactory.address);
+    contractList.arbitrum.system.proxyFactory = pfactory.address;
+
 
     //deploy factories
     let tokenFactory = await TokenFactory.new(booster.address, pfactory.address,{from:deployer});
     console.log("token factory at: " +tokenFactory.address);
+    contractList.arbitrum.system.tokenFactory = tokenFactory.address;
+
 
     let tokenImp = await DepositToken.new(booster.address,{from:deployer});
     console.log("deposit token impl: " +tokenImp.address);
+    contractList.arbitrum.system.depositToken = tokenImp.address;
+
     await tokenFactory.setImplementation(tokenImp.address,{from:deployer});
     console.log("token impl set");
 
     let rewardHook = await PoolRewardHook.new(booster.address, {from:deployer});
     console.log("reward hook: " +rewardHook.address);
+    contractList.arbitrum.system.rewardHook = rewardHook.address;
 
     var dummytoken = await DummyToken.new("DummyToken","DT", {from:deployer});
     console.log("dummy cvx token at " +dummytoken.address);
 
     let rewardManager = await RewardManager.new(booster.address, dummytoken.address, {from:deployer});
     console.log("reward manager: " +rewardManager.address);
+    contractList.arbitrum.system.rewardManager = rewardManager.address;
+
     await rewardManager.setPoolHook(rewardHook.address, {from:deployer});
     await rewardManager.rewardHook().then(a=>console.log("hook set to " +a))
 
@@ -142,9 +152,12 @@ contract("Deploy System and test staking/rewards", async accounts => {
 
     let rewardFactory = await RewardFactory.new(booster.address, usingproxy.address, pfactory.address,{from:deployer});
     console.log("reward factory at: " +rewardFactory.address);
+    contractList.arbitrum.system.rewardFactory = rewardFactory.address;
 
     let rewardImp = await ConvexRewardPool.new({from:deployer});
     console.log("reward pool impl: " +rewardImp.address);
+    contractList.arbitrum.system.rewardPool = rewardImp.address;
+
     await rewardFactory.setImplementation(rewardImp.address,{from:deployer});
     console.log("reward impl set");
 
@@ -153,8 +166,12 @@ contract("Deploy System and test staking/rewards", async accounts => {
 
     let feedeposit = await FeeDeposit.new(deployer);
     console.log("fee deposit at: " +feedeposit.address);
+    contractList.arbitrum.system.feeDeposit = feedeposit.address;
+
     await booster.setFeeDeposit(feedeposit.address, {from:deployer});
     console.log("fee deposit set on booster");
+
+    jsonfile.writeFileSync("./contracts.json", contractList, { spaces: 4 });
 
     console.log("\n\n --- deployed ----")
 
