@@ -354,7 +354,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("\n\n --- extra rewards complete ----");
 
 
-    console.log("\n\n >>> stake transfer >>>");
+    console.log("\n\n >>> stake transfer >>>\n");
 
     await rpool.balanceOf(userA).then(a=>console.log("balance of A: " +a))
     await rpool.balanceOf(userB).then(a=>console.log("balance of B: " +a))

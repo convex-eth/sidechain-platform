@@ -6,9 +6,7 @@ var contractList = jsonfile.readFileSync('./contracts.json');
 const VoterProxy = artifacts.require("VoterProxy");
 const Booster = artifacts.require("Booster");
 const ProxyFactory = artifacts.require("ProxyFactory");
-const TokenFactory = artifacts.require("TokenFactory");
 const RewardFactory = artifacts.require("RewardFactory");
-const DepositToken = artifacts.require("DepositToken");
 const ConvexRewardPool = artifacts.require("ConvexRewardPool");
 const FeeDeposit = artifacts.require("FeeDeposit");
 const IGauge = artifacts.require("IGauge");
@@ -121,17 +119,17 @@ contract("Deploy System and test staking/rewards", async accounts => {
 
 
     //deploy factories
-    let tokenFactory = await TokenFactory.new(booster.address, pfactory.address,{from:deployer});
-    console.log("token factory at: " +tokenFactory.address);
-    contractList.arbitrum.system.tokenFactory = tokenFactory.address;
+    // let tokenFactory = await TokenFactory.new(booster.address, pfactory.address,{from:deployer});
+    // console.log("token factory at: " +tokenFactory.address);
+    // contractList.arbitrum.system.tokenFactory = tokenFactory.address;
 
 
-    let tokenImp = await DepositToken.new(booster.address,{from:deployer});
-    console.log("deposit token impl: " +tokenImp.address);
-    contractList.arbitrum.system.depositToken = tokenImp.address;
+    // let tokenImp = await DepositToken.new(booster.address,{from:deployer});
+    // console.log("deposit token impl: " +tokenImp.address);
+    // contractList.arbitrum.system.depositToken = tokenImp.address;
 
-    await tokenFactory.setImplementation(tokenImp.address,{from:deployer});
-    console.log("token impl set");
+    // await tokenFactory.setImplementation(tokenImp.address,{from:deployer});
+    // console.log("token impl set");
 
     let rewardHook = await PoolRewardHook.new(booster.address, {from:deployer});
     console.log("reward hook: " +rewardHook.address);
@@ -161,8 +159,10 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await rewardFactory.setImplementation(rewardImp.address,{from:deployer});
     console.log("reward impl set");
 
-    await booster.setFactories(rewardFactory.address, tokenFactory.address,{from:deployer});
-    console.log("booster factories set");
+    // await booster.setFactories(rewardFactory.address, tokenFactory.address,{from:deployer});
+    // console.log("booster factories set");
+    await booster.setRewardFactory(rewardFactory.address, {from:deployer});
+    console.log("booster reward factory set");
 
     let feedeposit = await FeeDeposit.new(deployer);
     console.log("fee deposit at: " +feedeposit.address);
@@ -203,12 +203,12 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await curvelpCheck.decimals().then(a=>console.log("decimals = " +a))
 
 
-    var depositTokenCheck = await DepositToken.at(poolInfo.token);
-    console.log("deposit token: ")
-    console.log("address: " +depositTokenCheck.address);
-    await depositTokenCheck.name().then(a=>console.log("name = " +a))
-    await depositTokenCheck.symbol().then(a=>console.log("symbol = " +a))
-    await depositTokenCheck.decimals().then(a=>console.log("decimals = " +a))
+    var rewardsTokenCheck = await ERC20.at(poolInfo.rewards);
+    console.log("rewards token: ")
+    console.log("address: " +rewardsTokenCheck.address);
+    await rewardsTokenCheck.name().then(a=>console.log("name = " +a))
+    await rewardsTokenCheck.symbol().then(a=>console.log("symbol = " +a))
+    await rewardsTokenCheck.decimals().then(a=>console.log("decimals = " +a))
 
 
     var rpool = await ConvexRewardPool.at(poolInfo.rewards);
@@ -217,7 +217,6 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await rpool.curveGauge().then(a=>console.log("curveGauge = " +a));
     await rpool.convexStaker().then(a=>console.log("convexStaker = " +a));
     await rpool.convexBooster().then(a=>console.log("convexBooster = " +a));
-    await rpool.convexToken().then(a=>console.log("convexToken = " +a));
     await rpool.convexPoolId().then(a=>console.log("convexPoolId = " +a));
     await rpool.totalSupply().then(a=>console.log("totalSupply = " +a));
     await rpool.rewardHook().then(a=>console.log("rewardHook = " +a));
