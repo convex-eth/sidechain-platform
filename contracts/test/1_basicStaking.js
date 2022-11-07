@@ -6,9 +6,7 @@ var contractList = jsonfile.readFileSync('./contracts.json');
 const VoterProxy = artifacts.require("VoterProxy");
 const Booster = artifacts.require("Booster");
 const ProxyFactory = artifacts.require("ProxyFactory");
-const TokenFactory = artifacts.require("TokenFactory");
 const RewardFactory = artifacts.require("RewardFactory");
-// const DepositToken = artifacts.require("DepositToken");
 const ConvexRewardPool = artifacts.require("ConvexRewardPool");
 const FeeDeposit = artifacts.require("FeeDeposit");
 const IGauge = artifacts.require("IGauge");
@@ -150,7 +148,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
 
     // await booster.setRewardFactory(rewardFactory.address, tokenFactory.address,{from:deployer});
     await booster.setRewardFactory(rewardFactory.address, {from:deployer});
-    console.log("booster factories set");
+    console.log("booster reward factory set");
 
     let feedeposit = await FeeDeposit.new(deployer);
     console.log("fee deposit at: " +feedeposit.address);
