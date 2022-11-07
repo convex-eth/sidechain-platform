@@ -8,7 +8,7 @@ const Booster = artifacts.require("Booster");
 const ProxyFactory = artifacts.require("ProxyFactory");
 const TokenFactory = artifacts.require("TokenFactory");
 const RewardFactory = artifacts.require("RewardFactory");
-const DepositToken = artifacts.require("DepositToken");
+// const DepositToken = artifacts.require("DepositToken");
 const ConvexRewardPool = artifacts.require("ConvexRewardPool");
 const FeeDeposit = artifacts.require("FeeDeposit");
 const IGauge = artifacts.require("IGauge");
@@ -118,13 +118,13 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("pfactory at: " +pfactory.address);
 
     //deploy factories
-    let tokenFactory = await TokenFactory.new(booster.address, pfactory.address,{from:deployer});
-    console.log("token factory at: " +tokenFactory.address);
+    // let tokenFactory = await TokenFactory.new(booster.address, pfactory.address,{from:deployer});
+    // console.log("token factory at: " +tokenFactory.address);
 
-    let tokenImp = await DepositToken.new(booster.address,{from:deployer});
-    console.log("deposit token impl: " +tokenImp.address);
-    await tokenFactory.setImplementation(tokenImp.address,{from:deployer});
-    console.log("token impl set");
+    // let tokenImp = await DepositToken.new(booster.address,{from:deployer});
+    // console.log("deposit token impl: " +tokenImp.address);
+    // await tokenFactory.setImplementation(tokenImp.address,{from:deployer});
+    // console.log("token impl set");
 
     let rewardHook = await PoolRewardHook.new(booster.address, {from:deployer});
     console.log("reward hook: " +rewardHook.address);
@@ -148,7 +148,8 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await rewardFactory.setImplementation(rewardImp.address,{from:deployer});
     console.log("reward impl set");
 
-    await booster.setFactories(rewardFactory.address, tokenFactory.address,{from:deployer});
+    // await booster.setRewardFactory(rewardFactory.address, tokenFactory.address,{from:deployer});
+    await booster.setRewardFactory(rewardFactory.address, {from:deployer});
     console.log("booster factories set");
 
     let feedeposit = await FeeDeposit.new(deployer);
@@ -186,13 +187,13 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await curvelpCheck.decimals().then(a=>console.log("decimals = " +a))
 
 
-    var depositTokenCheck = await DepositToken.at(poolInfo.token);
-    console.log("deposit token: ")
-    console.log("address: " +depositTokenCheck.address);
-    await depositTokenCheck.name().then(a=>console.log("name = " +a))
-    await depositTokenCheck.symbol().then(a=>console.log("symbol = " +a))
-    await depositTokenCheck.decimals().then(a=>console.log("decimals = " +a))
-    await depositTokenCheck.initialize(poolInfo.lptoken).catch(a=>console.log("catch reinit on deposit token: " +a))
+    var rewardsTokenCheck = await ERC20.at(poolInfo.rewards);
+    console.log("rewards token: ")
+    console.log("address: " +rewardsTokenCheck.address);
+    await rewardsTokenCheck.name().then(a=>console.log("name = " +a))
+    await rewardsTokenCheck.symbol().then(a=>console.log("symbol = " +a))
+    await rewardsTokenCheck.decimals().then(a=>console.log("decimals = " +a))
+    // await rewardsTokenCheck.initialize(poolInfo.lptoken).catch(a=>console.log("catch reinit on deposit token: " +a))
 
 
     var rpool = await ConvexRewardPool.at(poolInfo.rewards);
@@ -201,13 +202,15 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await rpool.curveGauge().then(a=>console.log("curveGauge = " +a));
     await rpool.convexStaker().then(a=>console.log("convexStaker = " +a));
     await rpool.convexBooster().then(a=>console.log("convexBooster = " +a));
-    await rpool.convexToken().then(a=>console.log("convexToken = " +a));
+    // await rpool.convexToken().then(a=>console.log("convexToken = " +a));
     await rpool.convexPoolId().then(a=>console.log("convexPoolId = " +a));
     await rpool.totalSupply().then(a=>console.log("totalSupply = " +a));
     await rpool.rewardHook().then(a=>console.log("rewardHook = " +a));
     await rpool.crv().then(a=>console.log("crv = " +a));
     await rpool.rewardLength().then(a=>console.log("rewardLength = " +a));
     await rpool.rewards(0).then(a=>console.log("rewards(0) = " +JSON.stringify(a) ));
+    //try reinit
+    await rpool.initialize(addressZero,addressZero,addressZero,addressZero,addressZero,0).catch(a=>console.log("catch reinit on reward contract: " +a))
 
     console.log("\n\n --- pool initialized ----");
 
@@ -228,8 +231,8 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await curvelp.approve(booster.address,web3.utils.toWei("1000000.0", "ether"), {from:userA} );
     console.log("approved lp to booster");
 
-    await booster.depositAll(4, true, {from:userA}).catch(a=>console.log("caught bad pid: " +a));
-    await booster.depositAll(0, true, {from:userA});
+    await booster.depositAll(4, {from:userA}).catch(a=>console.log("caught bad pid: " +a));
+    await booster.depositAll(0, {from:userA});
     console.log("deposit and staked in booster");
 
     await rpool.balanceOf(userA).then(a=>console.log("balance in rewards: " +a))
@@ -334,10 +337,10 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
     await advanceTime(day);
     await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
-    await advanceTime(day);
-    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
-    await advanceTime(day);
-    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+    // await advanceTime(day);
+    // await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+    // await advanceTime(day);
+    // await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
 
     await crv.balanceOf(userA).then(a=>console.log("crv on wallet A: " +a))
     await dummytoken.balanceOf(userA).then(a=>console.log("dummytoken on wallet A: " +a))
@@ -351,17 +354,49 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("\n\n --- extra rewards complete ----");
 
 
+    console.log("\n\n >>> stake transfer >>>");
+
+    await rpool.balanceOf(userA).then(a=>console.log("balance of A: " +a))
+    await rpool.balanceOf(userB).then(a=>console.log("balance of B: " +a))
+    await rpool.earned.call(userA).then(a=>console.log("earned A: " +JSON.stringify(a) ));
+    await rpool.earned.call(userB).then(a=>console.log("earned B: " +JSON.stringify(a) ));
+    await advanceTime(day);
+    await rpool.earned.call(userA).then(a=>console.log("earned A: " +JSON.stringify(a) ));
+    await rpool.earned.call(userB).then(a=>console.log("earned B: " +JSON.stringify(a) ));
+
+    var rbal = await rpool.balanceOf(userA);
+    console.log("\n\ntransfer to user B: " +rbal);
+    await rpool.transfer(userB, rbal, {from:userA});
+
+    await rpool.balanceOf(userA).then(a=>console.log("balance of A: " +a))
+    await rpool.balanceOf(userB).then(a=>console.log("balance of B: " +a))
+    console.log("\n\n");
+
+    await rpool.earned.call(userA).then(a=>console.log("earned A: " +JSON.stringify(a) ));
+    await rpool.earned.call(userB).then(a=>console.log("earned B: " +JSON.stringify(a) ));
+    await advanceTime(day);
+    await rpool.earned.call(userA).then(a=>console.log("earned A: " +JSON.stringify(a) ));
+    await rpool.earned.call(userB).then(a=>console.log("earned B: " +JSON.stringify(a) ));
+
+    await advanceTime(day);
+    await rpool.earned.call(userA).then(a=>console.log("earned A: " +JSON.stringify(a) ));
+    await rpool.earned.call(userB).then(a=>console.log("earned B: " +JSON.stringify(a) ));
+
+    console.log("\n\n --- stake transfer complete ----");
+
+
     console.log("\n\n >>> withdraw >>>");
 
 
-    await rpool.balanceOf(userA).then(a=>console.log("balance in rewards: " +a))
+    await rpool.balanceOf(userA).then(a=>console.log("balance A in rewards: " +a))
+    await rpool.balanceOf(userB).then(a=>console.log("balance B in rewards: " +a))
     await rpool.totalSupply().then(a=>console.log("rewards totalSupply: " +a));
-    await curvelp.balanceOf(userA).then(a=>console.log("curve lp balance: " +a))
-    await rpool.withdrawAllAndUnwrap(true,{from:userA});
+    await curvelp.balanceOf(userB).then(a=>console.log("curve lp balance: " +a))
+    await rpool.withdrawAll(true,{from:userB});
     console.log("withdrawn");
-    await rpool.balanceOf(userA).then(a=>console.log("balance in rewards: " +a))
+    await rpool.balanceOf(userB).then(a=>console.log("balance in rewards: " +a))
     await rpool.totalSupply().then(a=>console.log("rewards totalSupply: " +a));
-    await curvelp.balanceOf(userA).then(a=>console.log("curve lp balance: " +a))
+    await curvelp.balanceOf(userB).then(a=>console.log("curve lp balance: " +a))
 
     return;
   });

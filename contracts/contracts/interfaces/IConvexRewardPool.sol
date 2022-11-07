@@ -30,11 +30,7 @@ interface IConvexRewardPool{
     function rewards(uint256 _rewardIndex) external returns(RewardType memory);
     function earnedView(address _account) external view returns(EarnedData[] memory claimable);
     function earned(address _account) external returns(EarnedData[] memory claimable);
-    function stake(uint256 _amount) external returns(bool);
-    function stakeAll() external returns(bool);
     function stakeFor(address _for, uint256 _amount) external returns(bool);
     function withdraw(uint256 amount, bool claim) external returns(bool);
     function withdrawAll(bool claim) external;
-    function withdrawAndUnwrap(uint256 amount, bool claim) external returns(bool);
-    function withdrawAllAndUnwrap(bool claim) external;
 }

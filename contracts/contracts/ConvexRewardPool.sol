@@ -34,7 +34,6 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     address public curveGauge;
     address public convexStaker;
     address public convexBooster;
-    address public convexToken;
     uint256 public convexPoolId;
 
 
@@ -57,8 +56,8 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     event RewardAdded(address indexed _rewardToken);
 
     constructor() ERC20(
-            "StakedConvexPosition",
-            "stkCvx"
+            "TokenizedConvexPosition",
+            "cvxToken"
         ){
     }
 
@@ -67,7 +66,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
         address _curveGauge,
         address _convexStaker,
         address _convexBooster,
-        address _convexToken,
+        address _lptoken,
         uint256 _poolId)
     external {
         require(bytes(_tokenname).length == 0, "already init");
@@ -76,11 +75,10 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
         curveGauge = _curveGauge;
         convexStaker = _convexStaker;
         convexBooster = _convexBooster;
-        convexToken = _convexToken;
         convexPoolId = _poolId;
 
-        _tokenname = string(abi.encodePacked("Staked ", ERC20(_convexToken).name() ));
-        _tokensymbol = string(abi.encodePacked("stk", ERC20(_convexToken).symbol()));
+        _tokenname = string(abi.encodePacked(ERC20(_lptoken).name()," Convex Deposit"));
+        _tokensymbol = string(abi.encodePacked("cvx", ERC20(_lptoken).symbol()));
 
         //always add CRV in first slot
         _insertRewardToken(_crv);
@@ -130,7 +128,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
 
     //insert a new reward, ignore if already registered or invalid
     function _insertRewardToken(address _token) internal{
-        if(_token == convexToken || _token == address(0)){
+        if(_token == address(this) || _token == address(0)){
             //dont allow reward tracking of the staking token or invalid address
             return;
         }
@@ -310,34 +308,12 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
         _checkpoint(_account,_forwardTo);
     }
 
-    //Deposit/Stake a given amount
-    function stake(uint256 _amount) public nonReentrant returns(bool){
-        require(_amount > 0, 'RewardPool : Cannot stake 0');
-        
-        //checkpoint first
-        _checkpoint(msg.sender);
-
-        //change state
-        _mint(msg.sender, _amount);
-
-        //pull tokens
-        IERC20(convexToken).safeTransferFrom(msg.sender, address(this), _amount);
-        
-        emit Staked(msg.sender, _amount);
-
-        return true;
-    }
-
-    //stake/deposit entire balance
-    function stakeAll() external returns(bool){
-        uint256 balance = IERC20(convexToken).balanceOf(msg.sender);
-        stake(balance);
-        return true;
-    }
 
     //deposit/stake on behalf of another account
     function stakeFor(address _for, uint256 _amount) external nonReentrant returns(bool){
+        require(msg.sender == convexBooster, "!auth");
         require(_amount > 0, 'RewardPool : Cannot stake 0');
+
         
         //checkpoint first
         _checkpoint(_for);
@@ -346,9 +322,6 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
         //assign to _for
         _mint(_for, _amount);
 
-        //pull tokens from sender
-        IERC20(convexToken).safeTransferFrom(msg.sender, address(this), _amount);
-        
         emit Staked(_for, _amount);
         
         return true;
@@ -366,7 +339,6 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
         _burn(msg.sender, _amount);
 
         //tell booster to withdraw underlying lp tokens directly to user
-        //booster will burn the tokens, thus no transfer is needed
         IBooster(convexBooster).withdrawTo(convexPoolId,_amount,msg.sender);
 
         emit Withdrawn(msg.sender, _amount);

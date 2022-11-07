@@ -2,10 +2,8 @@
 pragma solidity 0.8.10;
 
 import "./interfaces/IRewards.sol";
-import "./interfaces/ITokenFactory.sol";
 import "./interfaces/IRewardFactory.sol";
 import "./interfaces/IStaker.sol";
-import "./interfaces/ITokenMinter.sol";
 import "./interfaces/IFeeDistro.sol";
 import "./interfaces/IPoolFactory.sol";
 import "./interfaces/IRewardManager.sol";
@@ -30,14 +28,13 @@ contract Booster{
     address public rewardManager; //controls rewards
     address public immutable staker; //voter proxy
     address public rewardFactory; //factory for creating main reward/staking pools
-    address public tokenFactory; //factor for creating deposit receipt tokens
     address public feeDeposit; //address where fees are accumulated
 
     bool public isShutdown; //flag if booster is shutdown or not
 
     struct PoolInfo {
         address lptoken; //the curve lp token
-        address token; //the convex deposit token
+        // address token; //the convex deposit token
         address gauge; //the curve gauge
         address rewards; //the main reward/staking contract
         bool shutdown; //is this pool shutdown?
@@ -119,11 +116,10 @@ contract Booster{
     }
 
     //set factories used when deploying new reward/token contracts
-    function setFactories(address _rfactory, address _tfactory) external {
+    function setRewardFactory(address _rfactory) external {
         require(msg.sender == owner, "!auth");
         
         rewardFactory = _rfactory;
-        tokenFactory = _tfactory;
     }
 
     //set address that receives platform fees
@@ -173,16 +169,14 @@ contract Booster{
         //the next pool's pid
         uint256 pid = poolInfo.length;
 
-        //create a tokenized deposit
-        address token = ITokenFactory(tokenFactory).CreateDepositToken(_lptoken);
         //create a reward contract for rewards
-        address newRewardPool = IRewardFactory(rewardFactory).CreateMainRewards(factoryCrv[_factory],_gauge,token,pid);
+        address newRewardPool = IRewardFactory(rewardFactory).CreateMainRewards(factoryCrv[_factory],_gauge,_lptoken,pid);
 
         //add the new pool
         poolInfo.push(
             PoolInfo({
                 lptoken: _lptoken,
-                token: token,
+                // token: token,
                 gauge: _gauge,
                 rewards: newRewardPool,
                 shutdown: false,
@@ -196,11 +190,6 @@ contract Booster{
 
         //set gauge redirect
         setGaugeRedirect(_gauge, newRewardPool);
-
-        //allow booster to stake to the reward pool
-        //safe because deposit token is only ever on this booster contract
-        //when deposit is a "depost and stake". there should be no free floating deposit tokens
-        IERC20(token).approve(newRewardPool, type(uint256).max);
 
         return true;
     }
@@ -259,7 +248,7 @@ contract Booster{
 
 
     //deposit lp tokens and stake
-    function deposit(uint256 _pid, uint256 _amount, bool _stake) public returns(bool){
+    function deposit(uint256 _pid, uint256 _amount) public returns(bool){
         require(!isShutdown,"shutdown");
         PoolInfo storage pool = poolInfo[_pid];
         require(pool.shutdown == false, "pool is closed");
@@ -273,38 +262,28 @@ contract Booster{
         require(gauge != address(0),"!gauge setting");
         IStaker(staker).deposit(lptoken,gauge,_amount);
 
-        address token = pool.token;
-        if(_stake){
-            //mint here and send to rewards on user behalf
-            ITokenMinter(token).mint(address(this),_amount);
-            IRewards(pool.rewards).stakeFor(msg.sender,_amount);
-        }else{
-            //add user balance directly
-            ITokenMinter(token).mint(msg.sender,_amount);
-        }
-
+        //mint reward tokens for user
+        IRewards(pool.rewards).stakeFor(msg.sender,_amount);
+        
         
         emit Deposited(msg.sender, _pid, _amount);
         return true;
     }
 
     //deposit all lp tokens and stake
-    function depositAll(uint256 _pid, bool _stake) external returns(bool){
+    function depositAll(uint256 _pid) external returns(bool){
         address lptoken = poolInfo[_pid].lptoken;
         uint256 balance = IERC20(lptoken).balanceOf(msg.sender);
-        deposit(_pid,balance,_stake);
+        deposit(_pid,balance);
         return true;
     }
 
     //withdraw lp tokens
-    function _withdraw(uint256 _pid, uint256 _amount, address _from, address _to) internal {
+    function _withdraw(uint256 _pid, uint256 _amount, address _to) internal {
         PoolInfo storage pool = poolInfo[_pid];
         address lptoken = pool.lptoken;
         address gauge = pool.gauge;
 
-        //remove lp balance
-        address token = pool.token;
-        ITokenMinter(token).burn(_from,_amount);
 
         //pull from gauge if not shutdown
         if (!pool.shutdown) {
@@ -334,28 +313,15 @@ contract Booster{
         emit Withdrawn(_to, _pid, _amount);
     }
 
-    //withdraw lp tokens
-    function withdraw(uint256 _pid, uint256 _amount) public returns(bool){
-        _withdraw(_pid,_amount,msg.sender,msg.sender);
-        return true;
-    }
-
-    //withdraw all lp tokens
-    function withdrawAll(uint256 _pid) public returns(bool){
-        address token = poolInfo[_pid].token;
-        uint256 userBal = IERC20(token).balanceOf(msg.sender);
-        withdraw(_pid, userBal);
-        return true;
-    }
-
     //allow reward contracts to withdraw directly to user
     function withdrawTo(uint256 _pid, uint256 _amount, address _to) external returns(bool){
         //require sender to be the reward contract for a given pool
         address rewardContract = poolInfo[_pid].rewards;
         require(msg.sender == rewardContract,"!auth");
 
-        //withdraw from reward contract and forward underlying to user
-        _withdraw(_pid,_amount,msg.sender,_to);
+        //trust is on the reward contract to properly bookkeep deposit token balance
+        //since the reward contract is now the deposit token itself
+        _withdraw(_pid,_amount,_to);
         return true;
     }
 
