@@ -314,12 +314,9 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
         require(msg.sender == convexBooster, "!auth");
         require(_amount > 0, 'RewardPool : Cannot stake 0');
 
-        
-        //checkpoint first
-        _checkpoint(_for);
-
         //change state
         //assign to _for
+        //Mint will checkpoint so safe to not call
         _mint(_for, _amount);
 
         emit Staked(_for, _amount);
@@ -332,10 +329,14 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     // function withdrawAndUnwrap(uint256 _amount, bool _claim) public nonReentrant returns(bool){
     function withdraw(uint256 _amount, bool _claim) public nonReentrant returns(bool){
 
-        //checkpoint first, if claim add claim address
-        _checkpoint(msg.sender, _claim ? msg.sender : address(0));
-        
+        //checkpoint first if claiming, or burn will call checkpoint anyway
+        if(_claim){
+            //checkpoint with claim flag
+            _checkpoint(msg.sender, msg.sender);
+        }
+
         //change state
+        //burn will also call checkpoint
         _burn(msg.sender, _amount);
 
         //tell booster to withdraw underlying lp tokens directly to user
@@ -352,7 +353,11 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     }
 
     function _beforeTokenTransfer(address _from, address _to, uint256 _amount) internal override {
-        _checkpoint(_from);
-        _checkpoint(_to);
+        if(_from != address(0)){
+            _checkpoint(_from);
+        }
+        if(_to != address(0)){
+            _checkpoint(_to);
+        }
     }
 }
