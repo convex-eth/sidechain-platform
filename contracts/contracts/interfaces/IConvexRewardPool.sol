@@ -22,12 +22,13 @@ interface IConvexRewardPool{
         uint256 _poolId) external;
     function setExtraReward(address) external;
     function setRewardHook(address) external;
+    function rewardHook() external view returns(address _hook);
     function getReward(address) external;
     function user_checkpoint(address) external;
-    function rewardLength() external returns(uint256);
-    function totalSupply() external returns(uint256);
-    function balanceOf(address) external returns(uint256);
-    function rewards(uint256 _rewardIndex) external returns(RewardType memory);
+    function rewardLength() external view returns(uint256);
+    function totalSupply() external view returns(uint256);
+    function balanceOf(address) external view returns(uint256);
+    function rewards(uint256 _rewardIndex) external view returns(RewardType memory);
     function earnedView(address _account) external view returns(EarnedData[] memory claimable);
     function earned(address _account) external returns(EarnedData[] memory claimable);
     function stakeFor(address _for, uint256 _amount) external returns(bool);

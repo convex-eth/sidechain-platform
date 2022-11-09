@@ -10,13 +10,16 @@ interface IGauge {
     function withdraw(uint256) external;
     function claim_rewards() external;
     function claim_rewards(address _account) external;
-    function reward_tokens(uint256) external view returns(address);//v2
-    function rewarded_token() external view returns(address);//v1
     function lp_token() external view returns(address);
     function set_rewards_receiver(address _receiver) external;
+    function reward_count() external view returns(uint256);
+    function reward_tokens(uint256 _rid) external view returns(address _rewardToken);
     function reward_data(address _reward) external view returns(address distributor, uint256 period_finish, uint256 rate, uint256 last_update, uint256 integral);
     function claimed_reward(address _account, address _token) external view returns(uint256);
     function claimable_reward(address _account, address _token) external view returns(uint256);
     function claimable_tokens(address _account) external returns(uint256);
+    function inflation_rate(uint256 _week) external view returns(uint256);
+    function period() external view returns(uint256);
+    function period_timestamp(uint256 _period) external view returns(uint256);
     // function claimable_reward_write(address _account, address _token) external returns(uint256);
 }
