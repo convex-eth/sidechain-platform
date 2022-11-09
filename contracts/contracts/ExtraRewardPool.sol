@@ -41,6 +41,7 @@ pragma solidity 0.8.10;
 
 import "./interfaces/MathUtil.sol";
 import "./interfaces/IBooster.sol";
+import "./interfaces/IExtraRewardPool.sol";
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
@@ -78,6 +79,14 @@ contract ExtraRewardPool {
 
     constructor(address _booster){
         booster = _booster;
+    }
+
+    function poolType() external pure returns(IExtraRewardPool.PoolType){
+        return IExtraRewardPool.PoolType.Single;
+    }
+
+    function poolVersion() external pure returns(uint256){
+        return 1;
     }
 
     //initialize minimal proxy

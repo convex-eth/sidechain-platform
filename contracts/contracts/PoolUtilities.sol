@@ -17,29 +17,43 @@ contract PoolUtilities{
     uint256 private constant WEEK = 7 * 86400;
 
     address public constant convexProxy = address(0x989AEb4d175e16225E39E87d0D97A3360524AD80);
+    address public immutable crv;
     address public immutable booster;
 
-    constructor(address _booster){
+    constructor(address _booster, address _crv){
         booster = _booster;
+        crv = _crv;
     }
 
 
     //get boosted reward rate of user at a specific staking contract
     //returns amount user receives per second based on weight/liq ratio
     //%return = userBoostedRewardRate * timeFrame * price of reward / price of LP / 1e18
-    function gaugeRewardRates(uint256 _pid) external view returns (uint256[] memory boostedRates) {
+    function gaugeRewardRates(uint256 _pid, uint256 _week) public view returns (uint256[] memory boostedRates) {
         //get pool info
-        (, address gauge, address rewards, ,) = IBooster(booster).poolInfo(_pid);
+        (, address gauge, , ,) = IBooster(booster).poolInfo(_pid);
 
-        //get current period -> timestamp from period
-        uint256 period = IGauge(gauge).period();
-        uint256 periodTime = IGauge(gauge).period_timestamp(period);
+        uint256 week = _week;
 
-        //get week
-        uint256 week = periodTime / WEEK;
+        if(week == 0){
+            //get current period -> timestamp from period
+            uint256 period = IGauge(gauge).period();
+            uint256 periodTime = IGauge(gauge).period_timestamp(period);
+
+            //get week from last checkpointed period
+            week = periodTime / WEEK;
+        }
 
         //get inflation rate
         uint256 infRate = IGauge(gauge).inflation_rate(week);
+
+        //if inflation is 0, there might be tokens on the gauge and not checkpointed yet
+        if(infRate == 0){
+            infRate = IERC20(crv).balanceOf(gauge) / WEEK;
+        }
+
+        //if inflation is still 0... might have not bridged yet, or lost gauge weight
+
 
         //get working supply
         uint256 wsupply = IGauge(gauge).working_supply();
@@ -90,7 +104,7 @@ contract PoolUtilities{
         }
     }
 
-     function externalRewardContracts(uint256 _pid) external view returns (address[] memory rewardContracts) {
+     function externalRewardContracts(uint256 _pid) public view returns (address[] memory rewardContracts) {
         //get pool info
         (, , address rewards, ,) = IBooster(booster).poolInfo(_pid);
 
@@ -102,6 +116,23 @@ contract PoolUtilities{
 
         for(uint256 i = 0; i < rewardCount; i++){
             rewardContracts[i] = IRewardHook(hook).poolRewardList(rewards, i);
+        }
+    }
+
+    function aggregateExtraRewardRates(uint256 _pid) external view returns(address[] memory tokens, uint256[] memory rates){
+        address[] memory rewardContracts = externalRewardContracts(_pid);
+
+        //limit to 10 for easier logic
+        tokens = new address[](10);
+        rates = new uint256[](10);
+
+        for(uint256 i = 0; i < rewardContracts.length; i++){
+            IExtraRewardPool.PoolType pt = IExtraRewardPool(rewardContracts[i]).poolType();
+            if(pt == IExtraRewardPool.PoolType.Single){
+                (address t, uint256 r) = singleRewardRate(_pid, rewardContracts[i]);
+                tokens[i] = t;
+                rates[i] = r;
+            }
         }
     }
 
@@ -118,10 +149,10 @@ contract PoolUtilities{
             uint256 poolRate = globalRate * IExtraRewardPool(_rewardContract).balanceOf(rewards) / totalSupply;
 
             //get pool total supply
-            // uint256 poolSupply = IConvexRewardPool(rewards).totalSupply();
+            uint256 poolSupply = IConvexRewardPool(rewards).totalSupply();
 
             //rate per deposit
-            rate = poolRate;// * 1e18 / poolSupply;
+            rate = poolRate * 1e18 / poolSupply;
         }
     }
 }

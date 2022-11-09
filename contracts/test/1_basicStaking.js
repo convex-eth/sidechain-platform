@@ -156,7 +156,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await booster.setFeeDeposit(feedeposit.address, {from:deployer});
     console.log("fee deposit set on booster");
 
-    let poolUtil = await PoolUtilities.new(booster.address);
+    let poolUtil = await PoolUtilities.new(booster.address, crv.address);
     console.log("poolUtil: " +poolUtil.address);
 
     console.log("\n\n --- deployed ----")
@@ -220,12 +220,12 @@ contract("Deploy System and test staking/rewards", async accounts => {
 
     console.log("\n\n >>>> simulate staking >>>>");
     await crv.balanceOf(userA).then(a=>console.log("crv on wallet: " +a))
-    await poolUtil.gaugeRewardRates(0).then(a=>console.log("gaugeRewardRates: " +a));
+    await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +a));
 
     //transfer lp tokens
     let lpHolder = "0x555766f3da968ecbefa690ffd49a2ac02f47aa5f";
     await unlockAccount(lpHolder);
-    await curvelp.transfer(userA,web3.utils.toWei("100.0", "ether"),{from:lpHolder,gasPrice:0});
+    await curvelp.transfer(userA,web3.utils.toWei("10.0", "ether"),{from:lpHolder,gasPrice:0});
     console.log("lp tokens transfered");
 
     var lpbalance = await curvelp.balanceOf(userA);
@@ -235,7 +235,8 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("approved lp to booster");
 
     await booster.depositAll(4, {from:userA}).catch(a=>console.log("caught bad pid: " +a));
-    var tx = await booster.depositAll(0, {from:userA});
+    var tx = await booster.deposit(0, web3.utils.toWei("1.0", "ether"), {from:userA});
+    // var tx = await booster.depositAll(0, {from:userA});
     console.log("deposit and staked in booster: " +tx.receipt.gasUsed);
 
     await rpool.balanceOf(userA).then(a=>console.log("balance in rewards: " +a))
@@ -253,7 +254,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("claimed 1");
     
 
-    await poolUtil.gaugeRewardRates(0).then(a=>console.log("gaugeRewardRates: " +a));
+    await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +a));
 
     await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
     await time.latest().then(a=>console.log("block time: " +a));
@@ -265,7 +266,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await rpool.methods['getReward(address)'](userA, {from:userA});
     console.log("claimed 2");
 
-    await poolUtil.gaugeRewardRates(0).then(a=>console.log("gaugeRewardRates: " +a));
+    await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +a));
 
     await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
     await advanceTime(3600);
@@ -338,9 +339,9 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await dummytoken.approve(extrapool.address, web3.utils.toWei("100000000.0", "ether"), {from:deployer});
     console.log("distributor approval")
 
-    await poolUtil.gaugeRewardRates(0).then(a=>console.log("gaugeRewardRates: " +a));
+    await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +a));
     await poolUtil.externalRewardContracts(0).then(a=>console.log("externalRewardContracts: " +a));
-    await poolUtil.singleRewardRate(0,extrapool.address).then(a=>console.log("singleRewardRate: " +JSON.stringify(a)));
+    await poolUtil.aggregateExtraRewardRates(0).then(a=>console.log("aggregateExtraRewardRates: " +JSON.stringify(a)));
 
 
     // await dummytoken.transfer(extrapool.address, web3.utils.toWei("1000.0", "ether"), {from:deployer} );
@@ -351,9 +352,9 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await extrapool.periodFinish().then(a=>console.log("periodFinish is: " +a))
     await extrapool.rewardRate().then(a=>console.log("rewardRate is: " +a))
 
-    await poolUtil.gaugeRewardRates(0).then(a=>console.log("gaugeRewardRates: " +a));
+    await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +a));
     await poolUtil.externalRewardContracts(0).then(a=>console.log("externalRewardContracts: " +a));
-    await poolUtil.singleRewardRate(0,extrapool.address).then(a=>console.log("singleRewardRate: " +JSON.stringify(a)));
+    await poolUtil.aggregateExtraRewardRates(0).then(a=>console.log("aggregateExtraRewardRates: " +JSON.stringify(a)));
 
     await extrapool.balanceOf(rpool.address).then(a=>console.log("weight of pool: " +a))
     await rewardManager.setPoolWeight(extrapool.address, rpool.address, web3.utils.toWei("1.0", "ether"), {from:deployer});
@@ -364,10 +365,14 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("added reward contract to hook for given pool");
 
 
-    await poolUtil.gaugeRewardRates(0).then(a=>console.log("gaugeRewardRates: " +a));
+    await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +a));
     await poolUtil.externalRewardContracts(0).then(a=>console.log("externalRewardContracts: " +a));
-    await poolUtil.singleRewardRate(0,extrapool.address).then(a=>console.log("singleRewardRate: " +JSON.stringify(a) ));
+    await poolUtil.aggregateExtraRewardRates(0).then(a=>console.log("aggregateExtraRewardRates: " +JSON.stringify(a) ));
 
+    //add more to staked
+    await booster.deposit(0, web3.utils.toWei("1.0", "ether"), {from:userA});
+    console.log("deposit increased")
+    await poolUtil.aggregateExtraRewardRates(0).then(a=>console.log("aggregateExtraRewardRates: " +JSON.stringify(a) ));
 
     await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
     await advanceTime(day);

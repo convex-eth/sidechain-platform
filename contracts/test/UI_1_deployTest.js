@@ -171,6 +171,10 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await booster.setFeeDeposit(feedeposit.address, {from:deployer});
     console.log("fee deposit set on booster");
 
+    let poolUtil = await PoolUtilities.new(booster.address, crv.address);
+    console.log("poolUtil: " +poolUtil.address);
+    contractList.arbitrum.system.poolUtil = poolUtil.address;
+
     jsonfile.writeFileSync("./contracts.json", contractList, { spaces: 4 });
 
     console.log("\n\n --- deployed ----")
