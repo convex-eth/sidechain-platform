@@ -29,7 +29,7 @@ contract PoolUtilities{
     //get boosted reward rate of user at a specific staking contract
     //returns amount user receives per second based on weight/liq ratio
     //%return = userBoostedRewardRate * timeFrame * price of reward / price of LP / 1e18
-    function gaugeRewardRates(uint256 _pid, uint256 _week) public view returns (uint256[] memory boostedRates) {
+    function gaugeRewardRates(uint256 _pid, uint256 _week) public view returns (address[] memory tokens, uint256[] memory boostedRates) {
         //get pool info
         (, address gauge, , ,) = IBooster(booster).poolInfo(_pid);
 
@@ -79,28 +79,28 @@ contract PoolUtilities{
         uint256 gaugeRewards = IGauge(gauge).reward_count();
 
         //make list of reward rates
+        tokens = new address[](gaugeRewards + 1);
         boostedRates = new uint256[](gaugeRewards + 1);
 
         //index 0 will be crv
+        tokens[0] = crv;
         boostedRates[0] = cvxInfRate;
 
+        //use total supply for rewards since no boost
+        uint256 tSupply = IGauge(gauge).totalSupply();
         //loop through rewards
         for(uint256 i = 0; i < gaugeRewards; i++){
-            (,, uint256 rrate,,) = IGauge(gauge).reward_data(IGauge(gauge).reward_tokens(i));
+            address rt = IGauge(gauge).reward_tokens(i);
+            (,, uint256 rrate,,) = IGauge(gauge).reward_data(rt);
 
-            //get rate per supply
-            if(wsupply > 0){
-                rrate = rrate * 1e18 / wsupply;
+            //get rate per total supply
+            if(tSupply > 0){
+                rrate = rrate * 1e18 / tSupply;
             }
 
-            //set rate (assume full boosted)
-            boostedRates[i+1] = rrate; // * 1e18 / poolSupply;
-
-            //get real boosted rate if balance is positive
-            if(wbalance > 0){
-                //if full boost, wbalance and dbalance will cancel out
-                boostedRates[i+1] = rrate * wbalance / dbalance;// * 1e18 / poolSupply;
-            }
+            //set rate (no boost for extra rewards)
+            boostedRates[i+1] = rrate;
+            tokens[i+1] = rt;
         }
     }
 

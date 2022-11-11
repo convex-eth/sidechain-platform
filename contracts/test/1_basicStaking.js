@@ -222,10 +222,17 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await crv.balanceOf(userA).then(a=>console.log("crv on wallet: " +a))
     await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +a));
 
+    
+    // await gauge.claimable_tokens.call(userZ).then(a=>console.log("earned: " +a ));
+    // await advanceTime(3600);
+    // await gauge.claimable_tokens.call(userZ).then(a=>console.log("earned: " +a ));
+
+    // return;
+
     //transfer lp tokens
     let lpHolder = "0x555766f3da968ecbefa690ffd49a2ac02f47aa5f";
     await unlockAccount(lpHolder);
-    await curvelp.transfer(userA,web3.utils.toWei("10.0", "ether"),{from:lpHolder,gasPrice:0});
+    await curvelp.transfer(userA,web3.utils.toWei("100.0", "ether"),{from:lpHolder,gasPrice:0});
     console.log("lp tokens transfered");
 
     var lpbalance = await curvelp.balanceOf(userA);
@@ -235,7 +242,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("approved lp to booster");
 
     await booster.depositAll(4, {from:userA}).catch(a=>console.log("caught bad pid: " +a));
-    var tx = await booster.deposit(0, web3.utils.toWei("1.0", "ether"), {from:userA});
+    var tx = await booster.deposit(0, web3.utils.toWei("10", "ether"), {from:userA});
     // var tx = await booster.depositAll(0, {from:userA});
     console.log("deposit and staked in booster: " +tx.receipt.gasUsed);
 
@@ -370,7 +377,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await poolUtil.aggregateExtraRewardRates(0).then(a=>console.log("aggregateExtraRewardRates: " +JSON.stringify(a) ));
 
     //add more to staked
-    await booster.deposit(0, web3.utils.toWei("1.0", "ether"), {from:userA});
+    await booster.deposit(0, web3.utils.toWei("10.0", "ether"), {from:userA});
     console.log("deposit increased")
     await poolUtil.aggregateExtraRewardRates(0).then(a=>console.log("aggregateExtraRewardRates: " +JSON.stringify(a) ));
 
@@ -433,12 +440,79 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await rpool.balanceOf(userA).then(a=>console.log("balance A in rewards: " +a))
     await rpool.balanceOf(userB).then(a=>console.log("balance B in rewards: " +a))
     await rpool.totalSupply().then(a=>console.log("rewards totalSupply: " +a));
-    await curvelp.balanceOf(userB).then(a=>console.log("curve lp balance: " +a))
+    await curvelp.balanceOf(userB).then(a=>console.log("curve lp balance of B: " +a))
     await rpool.withdrawAll(true,{from:userB});
     console.log("withdrawn");
-    await rpool.balanceOf(userB).then(a=>console.log("balance in rewards: " +a))
+    await rpool.balanceOf(userB).then(a=>console.log("balance in rewardsof B: " +a))
     await rpool.totalSupply().then(a=>console.log("rewards totalSupply: " +a));
-    await curvelp.balanceOf(userB).then(a=>console.log("curve lp balance: " +a))
+    await curvelp.balanceOf(userB).then(a=>console.log("curve lp balance of B: " +a))
+
+    console.log("\n\n --- withdraw complete ----");
+
+    console.log("\n\n >>> shutdown >>>");
+
+    await curvelp.balanceOf(userA).then(a=>console.log("curve lp balance of A: " +a))
+    //deposit
+    await booster.deposit(0, web3.utils.toWei("10.0", "ether"), {from:userA});
+    console.log("deposited");
+
+    //try create same pool
+    console.log("..try create same pool")
+    await booster.addPool(curvelp.address, gauge.address, curvePoolFactory,{from:deployer}).catch(a=>console.log("revert: " +a));
+    var plength = await booster.poolLength();
+    console.log("pool count: " +plength);
+
+    //shutdown
+    await booster.shutdownPool(0,{from:deployer});
+    console.log("shutdown pool 0 complete");
+    var poolInfo = await booster.poolInfo(0);
+    console.log("pool info: " +JSON.stringify(poolInfo) );
+
+    //create new pool
+    console.log("..try recreate same pool")
+    await booster.addPool(curvelp.address, gauge.address, curvePoolFactory,{from:deployer}).catch(a=>console.log("revert: " +a));
+    var plength = await booster.poolLength();
+    console.log("pool count: " +plength);
+    var poolInfo = await booster.poolInfo(plength-1);
+    console.log("pool info: " +JSON.stringify(poolInfo) );
+
+    //deposit
+    await booster.deposit(1, web3.utils.toWei("10.0", "ether"), {from:userA});
+    console.log("deposited into new pool");
+
+    //shutdown 2
+    await booster.shutdownPool(1,{from:deployer});
+    console.log("shutdown pool 1 complete");
+    var poolInfo = await booster.poolInfo(1);
+    var newrewardpool = await ConvexRewardPool.at(poolInfo.rewards);
+    console.log("pool info: " +JSON.stringify(poolInfo) );
+
+    //withdraw proper amounts from both pids
+    await curvelp.balanceOf(userA).then(a=>console.log("curve lp balance of A: " +a))
+    await rpool.balanceOf(userA).then(a=>console.log("balance A in pool 0: " +a))
+    await newrewardpool.balanceOf(userA).then(a=>console.log("balance A in pool 1: " +a))
+    await curvelp.balanceOf(booster.address).then(a=>console.log("curve lp on booster: " +a))
+    await booster.shutdownBalances(0).then(a=>console.log("shutdown balances of pid 0: " +a))
+    await booster.shutdownBalances(1).then(a=>console.log("shutdown balances of pid 1: " +a))
+
+    await rpool.withdrawAll(true,{from:userA});
+    console.log("withdrawn 0");
+    await newrewardpool.withdrawAll(true,{from:userA});
+    console.log("withdrawn 1");
+
+
+    await curvelp.balanceOf(userA).then(a=>console.log("curve lp balance of A: " +a))
+    await rpool.balanceOf(userA).then(a=>console.log("balance A in pool 0: " +a))
+    await newrewardpool.balanceOf(userA).then(a=>console.log("balance A in pool 1: " +a))
+    await curvelp.balanceOf(booster.address).then(a=>console.log("curve lp on booster: " +a))
+    await booster.shutdownBalances(0).then(a=>console.log("shutdown balances of pid 0: " +a))
+    await booster.shutdownBalances(1).then(a=>console.log("shutdown balances of pid 1: " +a))
+
+    await rpool.withdraw(web3.utils.toWei("1.0", "ether"),true,{from:userA}).catch(a=>console.log("revert 0: no more deposited balance"));
+    await newrewardpool.withdraw(web3.utils.toWei("1.0", "ether"),true,{from:userA}).catch(a=>console.log("revert 1: no more deposited balance"));
+
+    console.log("\n\n --- withdraw complete ----");
+
 
     return;
   });
