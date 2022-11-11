@@ -122,9 +122,8 @@ contract PoolUtilities{
     function aggregateExtraRewardRates(uint256 _pid) external view returns(address[] memory tokens, uint256[] memory rates){
         address[] memory rewardContracts = externalRewardContracts(_pid);
 
-        //limit to 10 for easier logic
-        tokens = new address[](10);
-        rates = new uint256[](10);
+        tokens = new address[](rewardContracts.length);
+        rates = new uint256[](rewardContracts.length);
 
         for(uint256 i = 0; i < rewardContracts.length; i++){
             IExtraRewardPool.PoolType pt = IExtraRewardPool(rewardContracts[i]).poolType();

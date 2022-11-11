@@ -109,6 +109,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("booster at: " +booster.address);
 
     //set proxy operator
+    await usingproxy.setOperator(deployer,{from:deployer}).catch(a=>console.log("operator must have isShutdown -> " +a));
     await usingproxy.setOperator(booster.address,{from:deployer});
     console.log("set voterproxy operator");
 
@@ -220,7 +221,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
 
     console.log("\n\n >>>> simulate staking >>>>");
     await crv.balanceOf(userA).then(a=>console.log("crv on wallet: " +a))
-    await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +a));
+    await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +JSON.stringify(a)));
 
     
     // await gauge.claimable_tokens.call(userZ).then(a=>console.log("earned: " +a ));
@@ -261,7 +262,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("claimed 1");
     
 
-    await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +a));
+    await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +JSON.stringify(a)));
 
     await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
     await time.latest().then(a=>console.log("block time: " +a));
@@ -273,7 +274,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await rpool.methods['getReward(address)'](userA, {from:userA});
     console.log("claimed 2");
 
-    await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +a));
+    await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +JSON.stringify(a)));
 
     await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
     await advanceTime(3600);
@@ -346,7 +347,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await dummytoken.approve(extrapool.address, web3.utils.toWei("100000000.0", "ether"), {from:deployer});
     console.log("distributor approval")
 
-    await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +a));
+    await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +JSON.stringify(a)));
     await poolUtil.externalRewardContracts(0).then(a=>console.log("externalRewardContracts: " +a));
     await poolUtil.aggregateExtraRewardRates(0).then(a=>console.log("aggregateExtraRewardRates: " +JSON.stringify(a)));
 
@@ -359,7 +360,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await extrapool.periodFinish().then(a=>console.log("periodFinish is: " +a))
     await extrapool.rewardRate().then(a=>console.log("rewardRate is: " +a))
 
-    await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +a));
+    await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +JSON.stringify(a)));
     await poolUtil.externalRewardContracts(0).then(a=>console.log("externalRewardContracts: " +a));
     await poolUtil.aggregateExtraRewardRates(0).then(a=>console.log("aggregateExtraRewardRates: " +JSON.stringify(a)));
 
@@ -372,7 +373,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("added reward contract to hook for given pool");
 
 
-    await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +a));
+    await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +JSON.stringify(a)));
     await poolUtil.externalRewardContracts(0).then(a=>console.log("externalRewardContracts: " +a));
     await poolUtil.aggregateExtraRewardRates(0).then(a=>console.log("aggregateExtraRewardRates: " +JSON.stringify(a) ));
 
@@ -510,6 +511,41 @@ contract("Deploy System and test staking/rewards", async accounts => {
 
     await rpool.withdraw(web3.utils.toWei("1.0", "ether"),true,{from:userA}).catch(a=>console.log("revert 0: no more deposited balance"));
     await newrewardpool.withdraw(web3.utils.toWei("1.0", "ether"),true,{from:userA}).catch(a=>console.log("revert 1: no more deposited balance"));
+
+
+    console.log("\n\ncreate new pool")
+    await booster.addPool(curvelp.address, gauge.address, curvePoolFactory,{from:deployer}).catch(a=>console.log("revert: " +a));
+    var plength = await booster.poolLength();
+    console.log("pool count: " +plength);
+    var poolInfo = await booster.poolInfo(plength-1);
+    var newrewardpool = await ConvexRewardPool.at(poolInfo.rewards);
+    console.log("pool info: " +JSON.stringify(poolInfo) );
+
+    //deposit
+    await booster.deposit(2, web3.utils.toWei("10.0", "ether"), {from:userA});
+    console.log("deposited into new pool");
+    await newrewardpool.balanceOf(userA).then(a=>console.log("balance A in pool 2: " +a))
+
+    await booster.isShutdown().then(a=>console.log("is shutdown? " +a));
+    await booster.shutdownSystem({from:deployer});
+    console.log("shutdown system")
+    await booster.isShutdown().then(a=>console.log("is shutdown? " +a));
+
+    console.log("try deposit again");
+    await booster.deposit(2, web3.utils.toWei("10.0", "ether"), {from:userA}).catch(a=>console.log("catch: " +a));
+    
+    var poolInfo = await booster.poolInfo(plength-1);
+    console.log("pool info: " +JSON.stringify(poolInfo) );
+
+    console.log("try set operator");
+    await usingproxy.setOperator(deployer,{from:deployer}).catch(a=>console.log("catch: " +a));
+
+    let newbooster = await Booster.new(usingproxy.address,{from:deployer});
+    console.log("deploy new booster at: " +newbooster.address);
+
+    await usingproxy.setOperator(newbooster.address,{from:userA}).catch(a=>console.log("catch: " +a ));
+    await usingproxy.setOperator(newbooster.address,{from:deployer});
+    await usingproxy.operator().then(a=>console.log("set operator: " +a))
 
     console.log("\n\n --- withdraw complete ----");
 

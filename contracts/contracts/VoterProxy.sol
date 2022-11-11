@@ -48,6 +48,9 @@ contract VoterProxy {
         require(msg.sender == owner, "!auth");
         require(operator == address(0) || IBooster(operator).isShutdown() == true, "needs shutdown");
         
+        //require isshutdown interface
+        require(IBooster(_operator).isShutdown() == false, "no shutdown interface");
+        
         operator = _operator;
     }
 
