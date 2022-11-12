@@ -145,13 +145,14 @@ contract PoolUtilities{
 
         if(totalSupply > 0){
             //get rate for whole pool (vs other pools)
-            uint256 poolRate = globalRate * IExtraRewardPool(_rewardContract).balanceOf(rewards) / totalSupply;
+            rate = globalRate * IExtraRewardPool(_rewardContract).balanceOf(rewards) / totalSupply;
 
             //get pool total supply
             uint256 poolSupply = IConvexRewardPool(rewards).totalSupply();
-
-            //rate per deposit
-            rate = poolRate * 1e18 / poolSupply;
+            if(poolSupply > 0){
+                //rate per deposit
+                rate = rate * 1e18 / poolSupply;
+            }
         }
     }
 }
