@@ -46,33 +46,33 @@ module.exports = {
       provider: () => new HDWalletProvider(api_keys.mnemonic, api_keys.provider_mainnet),
       network_id: 1, 
       gas: 6721975,
-      gasPrice: 85000000000
+      gasPrice: 20000000000
     },
     mainnetArb: {
       provider: () => new HDWalletProvider(api_keys.mnemonic, api_keys.provider_arbitrum),
       network_id: 1, 
       gas: 6721975,
-      gasPrice: 85000000000
+      gasPrice: 500000000
     },
     mainnetOp: {
       provider: () => new HDWalletProvider(api_keys.mnemonic, api_keys.provider_optimism),
       network_id: 1, 
       gas: 6721975,
-      gasPrice: 85000000000
+      gasPrice: 500000000
     },
     debugArb: {
       host: "127.0.0.1",
       port: 8545,
       network_id: "42161",
       gas: 6721975,
-      gasPrice: 100000000000
+      gasPrice: 500000000
     },
     debug: {
       host: "127.0.0.1",
       port: 8545,
       network_id: "1",
       gas: 6721975,
-      gasPrice: 100000000000
+      gasPrice: 500000000
     },
   },
 

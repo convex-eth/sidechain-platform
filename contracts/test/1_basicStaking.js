@@ -45,7 +45,7 @@ const getChainContracts = () => {
   console.log("network: " +NETWORK);
   var contracts = {};
 
-  if(NETWORK == "debugArb"){
+  if(NETWORK == "debugArb" || NETWORK == "mainnetArb"){
     contracts = contractList.arbitrum;
   }
 
@@ -84,8 +84,8 @@ contract("Deploy System and test staking/rewards", async accounts => {
     let crv = await IERC20.at(chainContracts.curve.crv);
 
     //send deployer eth
-    await web3.eth.sendTransaction({from:userA, to:deployer, value:web3.utils.toWei("10.0", "ether") });
-    console.log("sent eth to deployer");
+    // await web3.eth.sendTransaction({from:userA, to:deployer, value:web3.utils.toWei("10.0", "ether") });
+    // console.log("sent eth to deployer");
 
     console.log("\n\n >>>> deploy system >>>>")
 
@@ -105,8 +105,19 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("using proxy: " +usingproxy.address);
 
     //deploy booster
-    let booster = await Booster.new(usingproxy.address,{from:deployer});
-    console.log("booster at: " +booster.address);
+    var mainnetbooster = "0xF403C135812408BFbE8713b5A23a04b3D48AAE31";
+    var booster;
+    found = false;
+    while(!found){
+      booster = await Booster.new(usingproxy.address,{from:deployer});
+      console.log("deployed booster to " +booster.address);
+      if(booster.address.toLowerCase() == mainnetbooster.toLowerCase()){
+        found=true;
+        console.log("booster proper address");
+      }
+    }
+    
+    console.log("final booster at: " +booster.address);
 
     //set proxy operator
     await usingproxy.setOperator(deployer,{from:deployer}).catch(a=>console.log("operator must have isShutdown -> " +a));
@@ -257,11 +268,12 @@ contract("Deploy System and test staking/rewards", async accounts => {
 
     await crv.balanceOf(userA).then(a=>console.log("crv on wallet: " +a))
 
-    //claim to self
-    await rpool.methods['getReward(address)'](userA, {from:userA});
-    console.log("claimed 1");
+    //claim for other
+    await rpool.methods['getReward(address)'](userA, {from:userB});
+    console.log("claimed 1 (user b claims for a)");
     
-
+    await crv.balanceOf(userA).then(a=>console.log("crv on wallet: " +a))
+    
     await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +JSON.stringify(a)));
 
     await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
@@ -454,8 +466,10 @@ contract("Deploy System and test staking/rewards", async accounts => {
 
     await curvelp.balanceOf(userA).then(a=>console.log("curve lp balance of A: " +a))
     //deposit
-    await booster.deposit(0, web3.utils.toWei("10.0", "ether"), {from:userA});
-    console.log("deposited");
+    for(var i = 0; i < 10; i++){
+      await booster.deposit(0, web3.utils.toWei("1.0", "ether"), {from:userA});
+      console.log("deposited " +i);
+    }
 
     //try create same pool
     console.log("..try create same pool")
@@ -548,6 +562,40 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await usingproxy.operator().then(a=>console.log("set operator: " +a))
 
     console.log("\n\n --- withdraw complete ----");
+
+
+    console.log("\n\n >>> auth >>>");
+
+    await usingproxy.owner().then(a=>console.log("proxy owner: " +a))
+    await usingproxy.pendingOwner().then(a=>console.log("proxy pendingOwner: " +a))
+    await usingproxy.setPendingOwner(userZ,{from:userA}).catch(a=>console.log("set pending auth: " +a));
+    await usingproxy.setPendingOwner(userZ,{from:deployer});
+    console.log("set pending")
+    await usingproxy.owner().then(a=>console.log("proxy owner: " +a))
+    await usingproxy.pendingOwner().then(a=>console.log("proxy pendingOwner: " +a))
+
+    await usingproxy.acceptPendingOwner({from:userA}).catch(a=>console.log("accept auth"));
+    await unlockAccount(userZ);
+    await usingproxy.acceptPendingOwner({from:userZ, gasPrice:0});
+
+    await usingproxy.owner().then(a=>console.log("proxy owner: " +a))
+    await usingproxy.pendingOwner().then(a=>console.log("proxy pendingOwner: " +a))
+
+    await curvelp.allowance(usingproxy.address, userZ).then(a=>console.log("allowance check: " +a));
+    var data = curvelp.contract.methods.approve(userZ,web3.utils.toWei("1.0","ether")).encodeABI();
+    await usingproxy.execute(curvelp.address,0,data,{from:userA}).catch(a=>console.log("execute auth: " +a))
+    await unlockAccount(newbooster.address);
+    await usingproxy.execute(curvelp.address,0,data,{from:newbooster.address,gasPrice:0});
+    await curvelp.allowance(usingproxy.address, userZ).then(a=>console.log("allowance check: " +a));
+
+    await usingproxy.claimRewards(gauge.address,{from:userA}).catch(a=>console.log("proxy auth fail: " +a))
+    await usingproxy.claimCrv(gauge.address,addressZero,addressZero,addressZero,{from:userA}).catch(a=>console.log("proxy auth fail: " +a))
+    await usingproxy.withdrawAll(gauge.address,addressZero,{from:userA}).catch(a=>console.log("proxy auth fail: " +a))
+    await usingproxy.withdraw(gauge.address,addressZero,0,{from:userA}).catch(a=>console.log("proxy auth fail: " +a))
+    await usingproxy.rescue(gauge.address,addressZero,{from:userA}).catch(a=>console.log("proxy auth fail: " +a))
+    await usingproxy.deposit(gauge.address,addressZero,0,{from:userA}).catch(a=>console.log("proxy auth fail: " +a))
+
+    console.log("\n\n --- auth complete ----");
 
 
     return;
