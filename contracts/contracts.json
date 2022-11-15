@@ -4,14 +4,13 @@
             "voteProxy": "0x989AEb4d175e16225E39E87d0D97A3360524AD80",
             "booster": "0xF403C135812408BFbE8713b5A23a04b3D48AAE31",
             "cvx": "0xb952A807345991BD529FDded05009F5e80Fe8F45",
-            "proxyFactory": "",
-            "tokenFactory": "",
-            "depositToken": "",
-            "rewardHook": "",
-            "rewardManager": "",
-            "rewardFactory": "",
-            "rewardPool": "",
-            "feeDeposit": ""
+            "proxyFactory": "0xf53173a3104bFdC4eD2FA579089B5e6Bf4fc7a2b",
+            "rewardHook": "0xEdCCB35798fae4925718A43cc608aE136208aa8D",
+            "rewardManager": "0x3c995e43E6ddD551E226F4c5544C77BfeD147aB9",
+            "rewardFactory": "0x8014595F2AB54cD7c604B00E9fb932176fDc86Ae",
+            "rewardPool": "0xA46944D0845F786117D0e1034fC10585747C861b",
+            "feeDeposit": "0xE7CdD5ed586A095e395f2007449721eA2a5B878a",
+            "poolUtilities": "0xCF50b810E57Ac33B91dCF525C6ddd9881B139332"
         },
         "curve": {
             "stablePoolFactory": "",

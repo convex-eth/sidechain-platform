@@ -13,7 +13,6 @@ const IGauge = artifacts.require("IGauge");
 const RewardManager = artifacts.require("RewardManager");
 const PoolRewardHook = artifacts.require("PoolRewardHook");
 const ExtraRewardPool = artifacts.require("ExtraRewardPool");
-const DummyToken = artifacts.require("DummyToken");
 const PoolUtilities = artifacts.require("PoolUtilities");
 
 const IERC20 = artifacts.require("IERC20");
@@ -66,7 +65,6 @@ contract("Deploy System and test staking/rewards", async accounts => {
     let deployer = "0x947B7742C403f20e5FaCcDAc5E092C943E7D0277";
     let multisig = "0xa3C5A1e09150B75ff251c1a7815A07182c3de2FB";
     let addressZero = "0x0000000000000000000000000000000000000000"
-    let voteproxy = "0x989AEb4d175e16225E39E87d0D97A3360524AD80";
 
     let userA = accounts[0];
     let userB = accounts[1];
@@ -90,88 +88,24 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("\n\n >>>> deploy system >>>>")
 
     //system
-    var usingproxy;
-    var found = false;
-    while(!found){
-      var newproxy = await VoterProxy.new({from:deployer});
-      console.log("deployed proxy to " +newproxy.address);
-      if(newproxy.address.toLowerCase() == voteproxy.toLowerCase()){
-        found=true;
-        usingproxy = newproxy;
-        console.log("proxy deployed to proper address");
-      }
-    }
+    var usingproxy = await VoterProxy.at(chainContracts.system.voteProxy);
+    // return;
+    var booster = await Booster.at(chainContracts.system.booster);
+ 
+    var cvx = await IERC20.at(chainContracts.system.cvx);
 
-    console.log("using proxy: " +usingproxy.address);
-
-    //deploy booster
-    var mainnetbooster = "0xF403C135812408BFbE8713b5A23a04b3D48AAE31";
-    var booster;
-    found = false;
-    while(!found){
-      booster = await Booster.new(usingproxy.address,{from:deployer});
-      console.log("deployed booster to " +booster.address);
-      if(booster.address.toLowerCase() == mainnetbooster.toLowerCase()){
-        found=true;
-        console.log("booster proper address");
-      }
-    }
+    let rewardManager = await RewardManager.at(chainContracts.system.rewardManager);
     
-    console.log("final booster at: " +booster.address);
-
-    //set proxy operator
-    await usingproxy.setOperator(deployer,{from:deployer}).catch(a=>console.log("operator must have isShutdown -> " +a));
-    await usingproxy.setOperator(booster.address,{from:deployer});
-    console.log("set voterproxy operator");
-
-    //deploy proxy factory
-    let pfactory = await ProxyFactory.new({from:deployer});
-    console.log("pfactory at: " +pfactory.address);
-
-    //deploy factories
-    // let tokenFactory = await TokenFactory.new(booster.address, pfactory.address,{from:deployer});
-    // console.log("token factory at: " +tokenFactory.address);
-
-    // let tokenImp = await DepositToken.new(booster.address,{from:deployer});
-    // console.log("deposit token impl: " +tokenImp.address);
-    // await tokenFactory.setImplementation(tokenImp.address,{from:deployer});
-    // console.log("token impl set");
-
-    let rewardHook = await PoolRewardHook.new(booster.address, {from:deployer});
-    console.log("reward hook: " +rewardHook.address);
-
-    var dummytoken = await DummyToken.new("DummyToken","DT", {from:deployer});
-    console.log("dummy cvx token at " +dummytoken.address);
-
-    let rewardManager = await RewardManager.new(booster.address, dummytoken.address, {from:deployer});
-    console.log("reward manager: " +rewardManager.address);
-    await rewardManager.setPoolHook(rewardHook.address, {from:deployer});
-    await rewardManager.rewardHook().then(a=>console.log("hook set to " +a))
-
-    await booster.setRewardManager(rewardManager.address, {from:deployer});
-    await booster.rewardManager().then(a=>console.log("reward manager set to " +a));
-
-    let rewardFactory = await RewardFactory.new(booster.address, usingproxy.address, pfactory.address,{from:deployer});
-    console.log("reward factory at: " +rewardFactory.address);
-
-    let rewardImp = await ConvexRewardPool.new({from:deployer});
-    console.log("reward pool impl: " +rewardImp.address);
-    await rewardFactory.setImplementation(rewardImp.address,{from:deployer});
-    console.log("reward impl set");
-
-    // await booster.setRewardFactory(rewardFactory.address, tokenFactory.address,{from:deployer});
-    await booster.setRewardFactory(rewardFactory.address, {from:deployer});
-    console.log("booster reward factory set");
-
-    let feedeposit = await FeeDeposit.new(deployer);
-    console.log("fee deposit at: " +feedeposit.address);
-    await booster.setFeeDeposit(feedeposit.address, {from:deployer});
-    console.log("fee deposit set on booster");
-
-    let poolUtil = await PoolUtilities.new(booster.address, crv.address);
-    console.log("poolUtil: " +poolUtil.address);
+    let rewardHook = await PoolRewardHook.at(chainContracts.system.rewardHook);
+    
+    let feedeposit = await FeeDeposit.at(chainContracts.system.feeDeposit);
+    
+    let poolUtil = await PoolUtilities.at(chainContracts.system.poolUtilities);
+    // console.log("poolUtil: " +poolUtil.address);
 
     console.log("\n\n --- deployed ----")
+
+    // return;
 
     /////// set up pool
 
@@ -182,8 +116,6 @@ contract("Deploy System and test staking/rewards", async accounts => {
     let curvepool = "0x960ea3e3C7FB317332d990873d354E18d7645590";
     let curvePoolFactory = "0xabC000d88f23Bb45525E447528DBF656A9D55bf5";
 
-    await booster.setFactoryCrv(curvePoolFactory, crv.address, {from:deployer});
-    console.log("set crv address for factory " +curvePoolFactory);
 
     await booster.addPool(curvelp.address, gauge.address, curvePoolFactory,{from:deployer});
     console.log("pool added");
@@ -226,6 +158,23 @@ contract("Deploy System and test staking/rewards", async accounts => {
     //try reinit
     await rpool.initialize(addressZero,addressZero,addressZero,addressZero,addressZero,0).catch(a=>console.log("catch reinit on reward contract: " +a))
 
+
+    // await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +JSON.stringify(a)));
+    // //try add rewards directly on gauge
+    // var gaugeManager = await gauge.manager();
+    // await unlockAccount(gaugeManager);
+
+    // await gauge.add_reward(cvx.address, deployer, {from:gaugeManager, gasPrice:0});
+    // console.log("added cvx rewards directly to gauge");
+
+    // await cvx.approve(gauge.address, web3.utils.toWei("100000000.0", "ether"), {from:deployer});
+    // console.log("distributor approval")
+
+    // await gauge.deposit_reward_token(cvx.address, web3.utils.toWei("10000.0", "ether"), {from:deployer} );
+    // console.log("reward tokens added");
+
+    // await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +JSON.stringify(a)));
+
     console.log("\n\n --- pool initialized ----");
 
     ////  user staking
@@ -261,8 +210,8 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await rpool.balanceOf(userA).then(a=>console.log("balance in rewards: " +a))
     await rpool.totalSupply().then(a=>console.log("rewards totalSupply: " +a));
     await gauge.totalSupply().then(a=>console.log("gauge total supply: " +a))
-    await gauge.balanceOf(voteproxy).then(a=>console.log("gauge balanceOf convex: " +a))
-    await gauge.working_balances(voteproxy).then(a=>console.log("gauge working_balances convex: " +a))
+    await gauge.balanceOf(usingproxy.address).then(a=>console.log("gauge balanceOf convex: " +a))
+    await gauge.working_balances(usingproxy.address).then(a=>console.log("gauge working_balances convex: " +a))
     await gauge.working_supply().then(a=>console.log("gauge working_supply: " +a))
 
 
@@ -273,6 +222,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("claimed 1 (user b claims for a)");
     
     await crv.balanceOf(userA).then(a=>console.log("crv on wallet: " +a))
+    await cvx.balanceOf(userA).then(a=>console.log("cvx on wallet A: " +a))
     
     await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +JSON.stringify(a)));
 
@@ -297,6 +247,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("claimed 3");
 
     await crv.balanceOf(userA).then(a=>console.log("crv on wallet: " +a))
+    await cvx.balanceOf(userA).then(a=>console.log("cvx on wallet A: " +a))
     await crv.balanceOf(booster.address).then(a=>console.log("crv on booster: " +a))
 
 
@@ -325,20 +276,21 @@ contract("Deploy System and test staking/rewards", async accounts => {
 
     await crv.balanceOf(userA).then(a=>console.log("crv on wallet A: " +a))
     await crv.balanceOf(userB).then(a=>console.log("crv on wallet B: " +a))
+    await cvx.balanceOf(userA).then(a=>console.log("cvx on wallet A: " +a))
+    await cvx.balanceOf(userB).then(a=>console.log("cvx on wallet B: " +a))
 
     console.log("\n\n --- staking and rewards complete ----");
 
-
     console.log("\n\n >>> extra rewards >>>");
     
-    await dummytoken.mint(deployer,web3.utils.toWei("1000000.0", "ether"),{from:deployer});
-    console.log("minted")
+    // await dummytoken.mint(deployer,web3.utils.toWei("1000000.0", "ether"),{from:deployer});
+    // console.log("minted")
 
     await rpool.rewardLength().then(a=>console.log("reward length: "+a))
     await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
 
 
-    await rewardManager.setPoolRewardToken(rpool.address, dummytoken.address, {from:deployer});
+    await rewardManager.setPoolRewardToken(rpool.address, cvx.address, {from:deployer});
     console.log("set reward on pool");
     await rpool.rewardLength().then(a=>console.log("reward length: "+a))
 
@@ -346,7 +298,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
 
 
     var extrapool = await ExtraRewardPool.new(booster.address,{from:deployer});
-    await extrapool.initialize(dummytoken.address,{from:deployer});
+    await extrapool.initialize(cvx.address,{from:deployer});
     console.log("extra pool at " +extrapool.address);
     await extrapool.rewardManager().then(a=>console.log("manager is: " +a))
     await extrapool.rewardToken().then(a=>console.log("reward is: " +a))
@@ -356,7 +308,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await rewardManager.setRewardDistributor(extrapool.address, deployer, true, {from:deployer} );
     console.log("set reward distributor")
 
-    await dummytoken.approve(extrapool.address, web3.utils.toWei("100000000.0", "ether"), {from:deployer});
+    await cvx.approve(extrapool.address, web3.utils.toWei("100000000.0", "ether"), {from:deployer});
     console.log("distributor approval")
 
     await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +JSON.stringify(a)));
@@ -364,7 +316,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await poolUtil.aggregateExtraRewardRates(0).then(a=>console.log("aggregateExtraRewardRates: " +JSON.stringify(a)));
 
 
-    // await dummytoken.transfer(extrapool.address, web3.utils.toWei("1000.0", "ether"), {from:deployer} );
+    // await cvx.transfer(extrapool.address, web3.utils.toWei("1000.0", "ether"), {from:deployer} );
     await extrapool.queueNewRewards(web3.utils.toWei("0.0", "ether"), {from:userA} ).catch(a=>console.log("revert on non-distributor: " +a));
     await extrapool.queueNewRewards(web3.utils.toWei("1000.0", "ether"), {from:deployer} );
     console.log("rewards queued");
@@ -405,13 +357,13 @@ contract("Deploy System and test staking/rewards", async accounts => {
     // await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
 
     await crv.balanceOf(userA).then(a=>console.log("crv on wallet A: " +a))
-    await dummytoken.balanceOf(userA).then(a=>console.log("dummytoken on wallet A: " +a))
-    await dummytoken.balanceOf(extrapool.address).then(a=>console.log("dummytoken on extrapool: " +a))
-    await dummytoken.balanceOf(rpool.address).then(a=>console.log("dummytoken on rpool: " +a))
+    await cvx.balanceOf(userA).then(a=>console.log("cvx on wallet A: " +a))
+    await cvx.balanceOf(extrapool.address).then(a=>console.log("cvx on extrapool: " +a))
+    await cvx.balanceOf(rpool.address).then(a=>console.log("cvx on rpool: " +a))
     await rpool.methods['getReward(address)'](userA, {from:userA});
     console.log("claimed");
     await crv.balanceOf(userA).then(a=>console.log("crv on wallet A: " +a))
-    await dummytoken.balanceOf(userA).then(a=>console.log("dummytoken on wallet A: " +a))
+    await cvx.balanceOf(userA).then(a=>console.log("cvx on wallet A: " +a))
 
     console.log("\n\n --- extra rewards complete ----");
 

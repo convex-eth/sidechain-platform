@@ -22,4 +22,8 @@ interface IGauge {
     function period() external view returns(uint256);
     function period_timestamp(uint256 _period) external view returns(uint256);
     // function claimable_reward_write(address _account, address _token) external returns(uint256);
+    function add_reward(address _reward, address _distributor) external;
+    function set_reward_distributor(address _reward, address _distributor) external;
+    function deposit_reward_token(address _reward, uint256 _amount) external;
+    function manager() external view returns(address _manager);
 }
