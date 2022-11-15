@@ -34,7 +34,6 @@ contract Booster{
 
     struct PoolInfo {
         address lptoken; //the curve lp token
-        // address token; //the convex deposit token
         address gauge; //the curve gauge
         address rewards; //the main reward/staking contract
         bool shutdown; //is this pool shutdown?
@@ -176,13 +175,13 @@ contract Booster{
         poolInfo.push(
             PoolInfo({
                 lptoken: _lptoken,
-                // token: token,
                 gauge: _gauge,
                 rewards: newRewardPool,
                 shutdown: false,
                 factory: _factory
             })
         );
+        
         //set gauge as being used
         activeMap[_gauge] = true;
         //also set the lp token as used

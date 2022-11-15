@@ -55,6 +55,10 @@ contract PoolUtilities{
         //if inflation is still 0... might have not bridged yet, or lost gauge weight
 
 
+        //reduce by fees
+        infRate -= (infRate * IBooster(booster).fees() / 10000);
+        
+
         //get working supply
         uint256 wsupply = IGauge(gauge).working_supply();
 

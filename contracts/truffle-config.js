@@ -50,7 +50,7 @@ module.exports = {
     },
     mainnetArb: {
       provider: () => new HDWalletProvider(api_keys.mnemonic, api_keys.provider_arbitrum),
-      network_id: 1, 
+      network_id: 42161, 
       gas: 6721975,
       gasPrice: 500000000
     },

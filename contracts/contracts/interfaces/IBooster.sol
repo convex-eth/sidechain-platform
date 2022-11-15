@@ -16,5 +16,6 @@ interface IBooster {
    function poolInfo(uint256) external view returns(address _lptoken, address _gauge, address _rewards,bool _shutdown, address _factory);
    function poolLength() external view returns (uint256);
    function activeMap(address) external view returns(bool);
+   function fees() external view returns(uint256);
    function setPoolManager(address _poolM) external;
 }
