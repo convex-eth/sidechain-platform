@@ -155,19 +155,23 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
 
     //update and claim rewards from all locations
     function updateRewardsAndClaim() internal{
-        //make sure reward list is up to date
-        updateRewardList();
+        (,,,bool _shutdown,) = IBooster(convexBooster).poolInfo(convexPoolId);
 
-        //claim crv
-        IBooster(convexBooster).claimCrv(convexPoolId, curveGauge);
+        if(!_shutdown){
+            //make sure reward list is up to date
+            updateRewardList();
 
-        //claim rewards from gauge
-        IGauge(curveGauge).claim_rewards(convexStaker);
+            //claim crv
+            IBooster(convexBooster).claimCrv(convexPoolId, curveGauge);
 
-        //hook for external reward pulls
-        if(rewardHook != address(0)){
-            try IRewardHook(rewardHook).onRewardClaim(){
-            }catch{}
+            //claim rewards from gauge
+            IGauge(curveGauge).claim_rewards(convexStaker);
+
+            //hook for external reward pulls
+            if(rewardHook != address(0)){
+                try IRewardHook(rewardHook).onRewardClaim(){
+                }catch{}
+            }
         }
     }
 

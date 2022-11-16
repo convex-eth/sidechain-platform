@@ -8,7 +8,7 @@
             "rewardHook": "0xEdCCB35798fae4925718A43cc608aE136208aa8D",
             "rewardManager": "0x3c995e43E6ddD551E226F4c5544C77BfeD147aB9",
             "rewardFactory": "0x8014595F2AB54cD7c604B00E9fb932176fDc86Ae",
-            "rewardPool": "0xA46944D0845F786117D0e1034fC10585747C861b",
+            "rewardPool": "0x3b2D30734491AD77880d31e8aFe2A4d8aC135a9C",
             "feeDeposit": "0xE7CdD5ed586A095e395f2007449721eA2a5B878a",
             "poolUtilities": "0xCF50b810E57Ac33B91dCF525C6ddd9881B139332"
         },

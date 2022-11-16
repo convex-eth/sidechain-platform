@@ -447,12 +447,27 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await booster.deposit(1, web3.utils.toWei("10.0", "ether"), {from:userA});
     console.log("deposited into new pool");
 
-    //shutdown 2
-    await booster.shutdownPool(1,{from:deployer});
-    console.log("shutdown pool 1 complete");
+
+    //test claiming on old and new pool
+    await crv.balanceOf(userA).then(a=>console.log("crv on wallet before: " +a))
     var poolInfo = await booster.poolInfo(1);
     var newrewardpool = await ConvexRewardPool.at(poolInfo.rewards);
     console.log("pool info: " +JSON.stringify(poolInfo) );
+    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+    await newrewardpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+    await advanceTime(day);
+    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+    await newrewardpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+
+    await rpool.methods['getReward(address)'](userA, {from:userA});
+    await crv.balanceOf(userA).then(a=>console.log("crv on wallet after old claim: " +a))
+    await newrewardpool.methods['getReward(address)'](userA, {from:userA});
+    await crv.balanceOf(userA).then(a=>console.log("crv on wallet after new claim: " +a))
+
+    //shutdown 2
+    await booster.shutdownPool(1,{from:deployer});
+    console.log("shutdown pool 1 complete");
+   
 
     //withdraw proper amounts from both pids
     await curvelp.balanceOf(userA).then(a=>console.log("curve lp balance of A: " +a))
