@@ -9,8 +9,9 @@
             "rewardManager": "0x3c995e43E6ddD551E226F4c5544C77BfeD147aB9",
             "rewardFactory": "0x8014595F2AB54cD7c604B00E9fb932176fDc86Ae",
             "rewardPool": "0x3b2D30734491AD77880d31e8aFe2A4d8aC135a9C",
+            "cvxIncentives": "0x665D4Bea98e3a1849526553453E8369B448C6AD4",
             "feeDeposit": "0xE7CdD5ed586A095e395f2007449721eA2a5B878a",
-            "poolUtilities": "0xCF50b810E57Ac33B91dCF525C6ddd9881B139332"
+            "poolUtilities": "0xB20e684dE561C54021651050F4518dAa1976eB42"
         },
         "curve": {
             "stablePoolFactory": "",

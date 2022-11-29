@@ -140,14 +140,25 @@ contract PoolUtilities{
     }
 
     function singleRewardRate(uint256 _pid, address _rewardContract) public view returns (address token, uint256 rate) {
-        //get pool info
-        (, , address rewards, ,) = IBooster(booster).poolInfo(_pid);
-
-        uint256 globalRate = IExtraRewardPool(_rewardContract).rewardRate();
-        uint256 totalSupply = IExtraRewardPool(_rewardContract).totalSupply();
+        
+        //set token
         token = IExtraRewardPool(_rewardContract).rewardToken();
 
+        //check period finish
+        if(IExtraRewardPool(_rewardContract).periodFinish() < block.timestamp ){
+            //return early as rate is 0
+            return (token,0);
+        }
+
+        //get global rate and supply
+        uint256 globalRate = IExtraRewardPool(_rewardContract).rewardRate();
+        uint256 totalSupply = IExtraRewardPool(_rewardContract).totalSupply();
+        
+
         if(totalSupply > 0){
+            //get pool info
+            (, , address rewards, ,) = IBooster(booster).poolInfo(_pid);
+
             //get rate for whole pool (vs other pools)
             rate = globalRate * IExtraRewardPool(_rewardContract).balanceOf(rewards) / totalSupply;
 
