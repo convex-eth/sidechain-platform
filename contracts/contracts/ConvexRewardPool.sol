@@ -41,9 +41,10 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     RewardType[] public rewards;
     mapping(address => mapping(address => uint256)) public reward_integral_for;// token -> account -> integral
     mapping(address => mapping(address => uint256)) public claimable_reward;//token -> account -> claimable
-    mapping(address => bool) public rewardMap;
+    mapping(address => uint256) public rewardMap;
     address public rewardHook;
     address public crv;
+    uint256 public constant maxRewards = 12;
 
     //management
     string internal _tokenname;
@@ -54,6 +55,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     event Withdrawn(address indexed _user, uint256 _amount);
     event RewardPaid(address indexed _user, address indexed _rewardToken, address indexed _receiver, uint256 _rewardAmount);
     event RewardAdded(address indexed _rewardToken);
+    event RewardInvalidated(address _rewardToken);
 
     constructor() ERC20(
             "TokenizedConvexPosition",
@@ -132,17 +134,52 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
             //dont allow reward tracking of the staking token or invalid address
             return;
         }
+
         //add to reward list if new
-        if(!rewardMap[_token]){
+        if(rewardMap[_token] == 0){
+            //check reward count for new additions
+            require(rewards.length < maxRewards, "max rewards");
+
+            //set token
             RewardType storage r = rewards.push();
             r.reward_token = _token;
-            rewardMap[_token] = true;
+            
+            //set map index after push (mapped value is +1 of real index)
+            rewardMap[_token] = rewards.length;
 
             //workaround: transfer 0 to self so that earned() reports correctly
             //with new tokens
             try IERC20(_token).transfer(address(this), 0){}catch{}
 
             emit RewardAdded(_token);
+        }else{
+            //get previous used index of given token
+            //this ensures that reviving can only be done on the previous used slot
+            uint256 index = rewardMap[_token];
+            if(index > 0){
+                //index is rewardMap minus one
+                RewardType storage reward = rewards[index-1];
+                //check if it was invalidated
+                if(reward.reward_token == address(0)){
+                    //revive
+                    reward.reward_token = _token;
+                }
+            }
+        }
+    }
+
+    //allow invalidating a reward if the token causes trouble in calcRewardIntegral
+    function invalidateReward(address _token) public {
+        require(IBooster(convexBooster).rewardManager() == msg.sender, "!owner");
+
+        uint256 index = rewardMap[_token];
+        if(index > 0){
+            //index is registered rewards minus one
+            RewardType storage reward = rewards[index-1];
+            require(reward.reward_token == _token, "!mismatch");
+            //set reward token address to 0, integral calc will now skip
+            reward.reward_token = address(0);
+            emit RewardInvalidated(_token);
         }
     }
 
@@ -183,6 +220,11 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     //calculate and record an account's earnings of the given reward.  if _claimTo is given it will also claim.
     function _calcRewardIntegral(uint256 _index, address _account, address _claimTo) internal{
         RewardType storage reward = rewards[_index];
+        //skip invalidated rewards
+         //if a reward token starts throwing an error, calcRewardIntegral needs a way to exit
+         if(reward.reward_token == address(0)){
+            return;
+         }
 
         //get difference in balance and remaining rewards
         //getReward is unguarded so we use reward_remaining to keep track of how much was actually claimed since last checkpoint
@@ -356,7 +398,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
         withdraw(balanceOf(msg.sender),claim);
     }
 
-    function _beforeTokenTransfer(address _from, address _to, uint256 _amount) internal override {
+    function _beforeTokenTransfer(address _from, address _to, uint256 _amount) internal override nonReentrant{
         if(_from != address(0)){
             _checkpoint(_from);
         }
