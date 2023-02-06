@@ -11,8 +11,8 @@ contract RewardFactory {
 
     address public immutable proxyFactory;
     address public immutable staker;
-
-    address public operator;
+    address public immutable operator;
+    
     address public mainImplementation;
 
     constructor(address _operator, address _staker, address _proxyFactory) {

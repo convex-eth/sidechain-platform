@@ -9,12 +9,13 @@ import "./interfaces/IPoolFactory.sol";
 import "./interfaces/IRewardManager.sol";
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /*
 This is the main contract which will have operator role on the VoterProxy.
 Handles pool creation, deposits/withdraws, as well as other managment functions like factories/managers/fees
 */
-contract Booster{
+contract Booster is ReentrancyGuard{
     using SafeERC20 for IERC20;
 
     uint256 public fees = 1700; //platform fees
@@ -117,6 +118,7 @@ contract Booster{
     //set factories used when deploying new reward/token contracts
     function setRewardFactory(address _rfactory) external {
         require(msg.sender == owner, "!auth");
+        require(rewardFactory == address(0), "sealed");
         
         rewardFactory = _rfactory;
     }
@@ -152,7 +154,7 @@ contract Booster{
     }
 
     //create a new pool
-    function addPool(address _lptoken, address _gauge, address _factory) external returns(bool){
+    function addPool(address _lptoken, address _gauge, address _factory) external nonReentrant returns(bool){
         //only manager
         require(msg.sender==poolManager && !isShutdown, "!add");
         //basic checks
@@ -194,7 +196,7 @@ contract Booster{
     }
 
     //shutdown pool, only call from pool manager
-    function shutdownPool(uint256 _pid) external returns(bool){
+    function shutdownPool(uint256 _pid) external nonReentrant returns(bool){
         require(msg.sender==poolManager, "!auth");
         return _shutdownPool(_pid);
     }
@@ -233,21 +235,22 @@ contract Booster{
     //shutdown this contract.
     //  unstake and pull all lp tokens to this address
     //  only allow withdrawals
-    function shutdownSystem() external{
+    function shutdownSystem() external nonReentrant{
         require(msg.sender == owner, "!auth");
-        //flag system as shutdown
-        isShutdown = true;
-
+        
         //shutdown all pools.
         //gas cost could grow too large to do all, in which case individual pools should be shutdown first
         for(uint i=0; i < poolInfo.length; i++){
             _shutdownPool(i);
         }
+
+        //flag system as shutdown at the end
+        isShutdown = true;
     }
 
 
     //deposit lp tokens and stake
-    function deposit(uint256 _pid, uint256 _amount) public returns(bool){
+    function deposit(uint256 _pid, uint256 _amount) public nonReentrant returns(bool){
         require(!isShutdown,"shutdown");
         PoolInfo storage pool = poolInfo[_pid];
         require(pool.shutdown == false, "pool is closed");
@@ -313,7 +316,7 @@ contract Booster{
     }
 
     //allow reward contracts to withdraw directly to user
-    function withdrawTo(uint256 _pid, uint256 _amount, address _to) external returns(bool){
+    function withdrawTo(uint256 _pid, uint256 _amount, address _to) external nonReentrant returns(bool){
         //require sender to be the reward contract for a given pool
         address rewardContract = poolInfo[_pid].rewards;
         require(msg.sender == rewardContract,"!auth");
@@ -325,7 +328,7 @@ contract Booster{
     }
 
     //claim crv for a pool from the pool's factory and send to rewards
-    function claimCrv(uint256 _pid, address _gauge) external{
+    function claimCrv(uint256 _pid, address _gauge) external nonReentrant{
         //can only be called by the pool's reward contract
         address rewardContract = poolInfo[_pid].rewards;
         require(msg.sender == rewardContract,"!auth");
