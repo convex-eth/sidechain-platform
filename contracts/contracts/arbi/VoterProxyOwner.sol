@@ -40,6 +40,8 @@ contract VoterProxyOwner{
     constructor(address _boosterPlaceholder) {
         //default to owner of voter proxy
         owner = IVoterProxy(voterproxy).owner();
+        //check that placeholder has proper interface, can be in shutdown state from start
+        require(IOperator(_boosterPlaceholder).isShutdown() == true, "no shutdown interface");
         boosterPlaceholder = _boosterPlaceholder;
         usedOperators[address(0xF403C135812408BFbE8713b5A23a04b3D48AAE31)] = true;
     }

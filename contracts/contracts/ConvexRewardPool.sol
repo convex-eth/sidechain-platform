@@ -156,14 +156,12 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
             //get previous used index of given token
             //this ensures that reviving can only be done on the previous used slot
             uint256 index = rewardMap[_token];
-            if(index > 0){
-                //index is rewardMap minus one
-                RewardType storage reward = rewards[index-1];
-                //check if it was invalidated
-                if(reward.reward_token == address(0)){
-                    //revive
-                    reward.reward_token = _token;
-                }
+            //index is rewardMap minus one
+            RewardType storage reward = rewards[index-1];
+            //check if it was invalidated
+            if(reward.reward_token == address(0)){
+                //revive
+                reward.reward_token = _token;
             }
         }
     }

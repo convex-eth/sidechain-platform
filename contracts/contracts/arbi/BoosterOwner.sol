@@ -130,9 +130,14 @@ contract BoosterOwner is ReentrancyGuard{
     }
 
     function shutdownSystem() external onlyOwner nonReentrant{
+        uint256 poolCount = IOwner(booster).poolLength();
+
         //shutdown system
         IOwner(booster).shutdownSystem();
         emit ShutdownExecuted();
+
+        //no pools were added during shutdown?
+        require(poolCount == IOwner(booster).poolLength(), "pool cnt");
 
         //make sure operator did not change during shutdown
         require(IOwner(voterproxyOwner).operator() == booster, "booster changed");
