@@ -238,6 +238,10 @@ contract Booster is ReentrancyGuard{
     function shutdownSystem() external nonReentrant{
         require(msg.sender == owner, "!auth");
         
+        //remove pool manager while shutting down so that no new pools can be added during the loop
+        address currentPoolManager = poolManager;
+        poolManager = address(0);
+
         //shutdown all pools.
         //gas cost could grow too large to do all, in which case individual pools should be shutdown first
         for(uint i=0; i < poolInfo.length; i++){
@@ -246,6 +250,9 @@ contract Booster is ReentrancyGuard{
 
         //flag system as shutdown at the end
         isShutdown = true;
+
+        //revert pool manager
+        poolManager = currentPoolManager;
     }
 
 
