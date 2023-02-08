@@ -1,18 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.10;
 
-
-interface IVoterProxy {
-    function setOperator(address _operator) external;
-    function setDepositor(address _depositor) external;
-    function setOwner(address _owner) external;
-    function owner() external returns(address);
-    function operator() external returns(address);
-    function depositor() external returns(address);
-}
+import "../interfaces/IVoterProxy.sol";
 
 interface IOperator{
     function isShutdown() external returns(bool);
+}
+
+interface IPlaceholder{
+    function shutdownSystem(bool _isShutdown) external;
 }
 
 /*
@@ -41,7 +37,7 @@ contract VoterProxyOwner{
         //default to owner of voter proxy
         owner = IVoterProxy(voterproxy).owner();
         //check that placeholder has proper interface, can be in shutdown state from start
-        require(IOperator(_boosterPlaceholder).isShutdown() == true, "no shutdown interface");
+        require(IOperator(_boosterPlaceholder).isShutdown() == false, "no shutdown interface");
         boosterPlaceholder = _boosterPlaceholder;
         usedOperators[address(0xF403C135812408BFbE8713b5A23a04b3D48AAE31)] = true;
     }
@@ -86,8 +82,12 @@ contract VoterProxyOwner{
         retireAccess[IVoterProxy(voterproxy).operator()] = _rmanager;
     }
 
+    function setPlaceholderState(bool _isShutdown) external onlyOwner{
+        IPlaceholder(boosterPlaceholder).shutdownSystem(_isShutdown);
+    }
+
     function setOperator(address _operator) external onlyOwner{
-        require(_operator != address(0),"!invalid address");
+        require(_operator != address(0) && _operator != boosterPlaceholder,"!invalid address");
         require(!usedOperators[_operator],"used Op");
         require( !IOperator(_operator).isShutdown(), "already shutdown" );
 
