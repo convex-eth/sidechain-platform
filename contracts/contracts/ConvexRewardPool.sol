@@ -57,7 +57,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     event RewardPaid(address indexed _user, address indexed _rewardToken, address indexed _receiver, uint256 _rewardAmount);
     event RewardAdded(address indexed _rewardToken);
     event RewardInvalidated(address _rewardToken);
-    event RewardRedirect(address indexed _account, address _forward);
+    event RewardRedirected(address indexed _account, address _forward);
 
     constructor() ERC20(
             "TokenizedConvexPosition",
@@ -344,7 +344,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     //set address to zero to disable
     function setRewardRedirect(address _to) external nonReentrant{
         rewardRedirect[msg.sender] = _to;
-        emit RewardRedirect(msg.sender, _to);
+        emit RewardRedirected(msg.sender, _to);
     }
 
     //claim reward for given account (unguarded)
