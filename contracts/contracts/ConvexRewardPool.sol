@@ -42,6 +42,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     mapping(address => mapping(address => uint256)) public reward_integral_for;// token -> account -> integral
     mapping(address => mapping(address => uint256)) public claimable_reward;//token -> account -> claimable
     mapping(address => uint256) public rewardMap;
+    mapping(address => address) public rewardRedirect;
     address public rewardHook;
     address public crv;
     uint256 public constant maxRewards = 12;
@@ -56,6 +57,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     event RewardPaid(address indexed _user, address indexed _rewardToken, address indexed _receiver, uint256 _rewardAmount);
     event RewardAdded(address indexed _rewardToken);
     event RewardInvalidated(address _rewardToken);
+    event RewardRedirect(address indexed _account, address _forward);
 
     constructor() ERC20(
             "TokenizedConvexPosition",
@@ -338,10 +340,22 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
         }
     }
 
+    //set any claimed rewards to automatically go to a different address
+    //set address to zero to disable
+    function setRewardRedirect(address _to) external nonReentrant{
+        rewardRedirect[msg.sender] = _to;
+        emit RewardRedirect(msg.sender, _to);
+    }
+
     //claim reward for given account (unguarded)
     function getReward(address _account) external nonReentrant {
+        //check if there is a redirect address
+        address claimTo = _account;
+        if(rewardRedirect[msg.sender] != address(0)){
+            claimTo = rewardRedirect[msg.sender];
+        }
         //claim directly in checkpoint logic to save a bit of gas
-        _checkpoint(_account, _account);
+        _checkpoint(_account, claimTo);
     }
 
     //claim reward for given account and forward (guarded)
