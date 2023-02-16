@@ -209,7 +209,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     var voterProxyOwner = await VoterProxyOwner.new(boosterPlaceholder.address,{from:deployer});
     console.log("proxy owner: " +voterProxyOwner.address);
     var boosterOwner = await BoosterOwner.new(voterProxyOwner.address,{from:deployer});
-    console.log("booster owner: " +boosterOwner.address,{from:deployer});
+    console.log("booster owner: " +boosterOwner.address);
 
     await usingproxy.setPendingOwner(voterProxyOwner.address,{from:multisig,gasPrice:0});
     await voterProxyOwner.acceptPendingOwner({from:multisig,gasPrice:0});
