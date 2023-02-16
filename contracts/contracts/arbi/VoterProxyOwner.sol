@@ -64,6 +64,11 @@ contract VoterProxyOwner{
         emit OwnershipSealed();
     }
 
+    function acceptPendingOwner() external onlyOwner{
+        //transfer booster ownership to this owner
+        IVoterProxy(voterproxy).acceptPendingOwner();
+    }
+
     function setProxyOwner() external onlyOwner{
         //allow reverting ownership until sealed
         require(!isSealed, "ownership sealed");
