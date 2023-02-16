@@ -350,12 +350,12 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     //claim reward for given account (unguarded)
     function getReward(address _account) external nonReentrant {
         //check if there is a redirect address
-        address claimTo = _account;
-        if(rewardRedirect[msg.sender] != address(0)){
-            claimTo = rewardRedirect[msg.sender];
+        if(rewardRedirect[_account] != address(0)){
+            _checkpoint(_account, rewardRedirect[_account]);
+        }else{
+            //claim directly in checkpoint logic to save a bit of gas
+            _checkpoint(_account, _account);
         }
-        //claim directly in checkpoint logic to save a bit of gas
-        _checkpoint(_account, claimTo);
     }
 
     //claim reward for given account and forward (guarded)

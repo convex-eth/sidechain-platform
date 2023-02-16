@@ -49,11 +49,6 @@ contract BoosterOwner is ReentrancyGuard{
     address public pendingowner;
     bool public isSealed;
 
-    uint256 public constant FORCE_DELAY = 30 days;
-
-    bool public isForceTimerStarted;
-    uint256 public forceTimestamp;
-
     event ShutdownStarted(uint256 executableTimestamp);
     event ShutdownExecuted();
     event TransferOwnership(address pendingOwner);

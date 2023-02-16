@@ -189,7 +189,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
  
     var cvx = await IERC20.at(chainContracts.system.cvx);
 
-    let rewardManager = await RewardManager.at(chainContracts.system.rewardManager);
+    var rewardManager = await RewardManager.at(chainContracts.system.rewardManager);
     
     let rewardHook = await PoolRewardHook.at(chainContracts.system.rewardHook);
     
@@ -210,6 +210,8 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("proxy owner: " +voterProxyOwner.address);
     var boosterOwner = await BoosterOwner.new(voterProxyOwner.address,{from:deployer});
     console.log("booster owner: " +boosterOwner.address);
+    rewardManager = await RewardManager.new(booster.address, cvx.address, chainContracts.system.rewardHook, {from:deployer});
+    console.log("reward manager: " +rewardManager.address);
 
     await usingproxy.setPendingOwner(voterProxyOwner.address,{from:multisig,gasPrice:0});
     await voterProxyOwner.acceptPendingOwner({from:multisig,gasPrice:0});
@@ -230,6 +232,9 @@ contract("Deploy System and test staking/rewards", async accounts => {
     // await rewardFactory.setImplementation(rewardPoolImplementation.address,{from:multisig,gasPrice:0});
     await boosterOwner.setRewardImplementation(rewardPoolImplementation.address,{from:multisig,gasPrice:0});
     console.log("set new reward pool");
+
+    await boosterOwner.setRewardManager(rewardManager.address,{from:multisig,gasPrice:0});
+    console.log("set new reward manager");
 
     console.log("\n\n --- updated ----")
     // return;
@@ -395,6 +400,9 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
     
     await crv.balanceOf(userA).then(a=>console.log("crv on wallet A: " +a))
+    await crv.balanceOf(userB).then(a=>console.log("crv on wallet B: " +a))
+    await cvx.balanceOf(userA).then(a=>console.log("cvx on wallet A: " +a))
+    await cvx.balanceOf(userB).then(a=>console.log("cvx on wallet B: " +a))
 
     //claim and forward
     await rpool.methods['getReward(address,address)'](userA, userB, {from:userB}).catch(a=>console.log("revert if not owner: " +a));
@@ -407,6 +415,27 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await cvx.balanceOf(userA).then(a=>console.log("cvx on wallet A: " +a))
     await cvx.balanceOf(userB).then(a=>console.log("cvx on wallet B: " +a))
 
+    await advanceTime(day);
+    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+    await rpool.setRewardRedirect(userD,{from:userA});
+    console.log("auto redirect to user D");
+    console.log("userA: " +userA);
+    console.log("userD: " +userD);
+    await rpool.rewardRedirect(userA).then(a=>console.log("rewardRedirect(userA): " +a));
+
+    await crv.balanceOf(userA).then(a=>console.log("crv on wallet A: " +a))
+    await crv.balanceOf(userD).then(a=>console.log("crv on wallet D: " +a))
+    await cvx.balanceOf(userA).then(a=>console.log("cvx on wallet A: " +a))
+    await cvx.balanceOf(userD).then(a=>console.log("cvx on wallet D: " +a))
+    await rpool.methods['getReward(address)'](userA, {from:userB});
+    console.log("claim A from B and redirect to D");
+    await crv.balanceOf(userA).then(a=>console.log("crv on wallet A: " +a))
+    await crv.balanceOf(userD).then(a=>console.log("crv on wallet D: " +a))
+    await cvx.balanceOf(userA).then(a=>console.log("cvx on wallet A: " +a))
+    await cvx.balanceOf(userD).then(a=>console.log("cvx on wallet D: " +a))
+    await rpool.setRewardRedirect(userA,{from:userA});
+    console.log("auto redirect reset to self");
+
     console.log("\n\n --- staking and rewards complete ----");
 
     console.log("\n\n >>> extra rewards >>>");
@@ -418,7 +447,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
 
 
-    await rewardManager.setPoolRewardToken(rpool.address, cvx.address, {from:multisig,gasPrice:0});
+    await rewardManager.setPoolRewardToken(rpool.address, cvx.address, {from:deployer});
     console.log("set reward on pool");
     await rpool.rewardLength().then(a=>console.log("reward length: "+a))
 
@@ -433,7 +462,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await extrapool.periodFinish().then(a=>console.log("periodFinish is: " +a))
     await extrapool.rewardRate().then(a=>console.log("rewardRate is: " +a))
 
-    await rewardManager.setRewardDistributor(extrapool.address, deployer, true, {from:multisig,gasPrice:0} );
+    await rewardManager.setRewardDistributor(extrapool.address, deployer, true, {from:deployer} );
     console.log("set reward distributor")
 
     await cvx.approve(extrapool.address, web3.utils.toWei("100000000.0", "ether"), {from:deployer});
@@ -457,11 +486,11 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await poolUtil.aggregateExtraRewardRates(0).then(a=>console.log("aggregateExtraRewardRates: " +JSON.stringify(a)));
 
     await extrapool.balanceOf(rpool.address).then(a=>console.log("weight of pool: " +a))
-    await rewardManager.setPoolWeight(extrapool.address, rpool.address, web3.utils.toWei("1.0", "ether"), {from:multisig,gasPrice:0});
+    await rewardManager.setPoolWeight(extrapool.address, rpool.address, web3.utils.toWei("1.0", "ether"), {from:deployer});
     console.log("set weight");
     await extrapool.balanceOf(rpool.address).then(a=>console.log("weight of pool: " +a))
 
-    await rewardManager.setPoolRewardContract(rpool.address, rewardHook.address, extrapool.address, {from:multisig,gasPrice:0});
+    await rewardManager.setPoolRewardContract(rpool.address, rewardHook.address, extrapool.address, {from:deployer});
     console.log("added reward contract to hook for given pool");
 
 
@@ -470,7 +499,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await poolUtil.aggregateExtraRewardRates(0).then(a=>console.log("aggregateExtraRewardRates: " +JSON.stringify(a) ));
 
     //add more to staked
-    await booster.deposit(0, web3.utils.toWei("10.0", "ether"), {from:userA});
+    await booster.deposit(plength-1, web3.utils.toWei("10.0", "ether"), {from:userA});
     console.log("deposit increased")
     await poolUtil.aggregateExtraRewardRates(0).then(a=>console.log("aggregateExtraRewardRates: " +JSON.stringify(a) ));
 
@@ -541,156 +570,6 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await curvelp.balanceOf(userB).then(a=>console.log("curve lp balance of B: " +a))
 
     console.log("\n\n --- withdraw complete ----");
-
-    console.log("\n\n >>> shutdown >>>");
-
-    await curvelp.balanceOf(userA).then(a=>console.log("curve lp balance of A: " +a))
-    //deposit
-    for(var i = 0; i < 10; i++){
-      await booster.deposit(0, web3.utils.toWei("1.0", "ether"), {from:userA});
-      console.log("deposited " +i);
-    }
-
-    //try create same pool
-    console.log("..try create same pool")
-    await booster.addPool(curvelp.address, gauge.address, curvePoolFactory,{from:deployer}).catch(a=>console.log("revert: " +a));
-    var plength = await booster.poolLength();
-    console.log("pool count: " +plength);
-
-    //shutdown
-    await booster.shutdownPool(0,{from:deployer});
-    console.log("shutdown pool 0 complete");
-    var poolInfo = await booster.poolInfo(0);
-    console.log("pool info: " +JSON.stringify(poolInfo) );
-
-    //create new pool
-    console.log("..try recreate same pool")
-    await booster.addPool(curvelp.address, gauge.address, curvePoolFactory,{from:deployer}).catch(a=>console.log("revert: " +a));
-    var plength = await booster.poolLength();
-    console.log("pool count: " +plength);
-    var poolInfo = await booster.poolInfo(plength-1);
-    console.log("pool info: " +JSON.stringify(poolInfo) );
-
-    //deposit
-    await booster.deposit(1, web3.utils.toWei("10.0", "ether"), {from:userA});
-    console.log("deposited into new pool");
-
-
-    //test claiming on old and new pool
-    await crv.balanceOf(userA).then(a=>console.log("crv on wallet before: " +a))
-    var poolInfo = await booster.poolInfo(1);
-    var newrewardpool = await ConvexRewardPool.at(poolInfo.rewards);
-    console.log("pool info: " +JSON.stringify(poolInfo) );
-    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
-    await newrewardpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
-    await advanceTime(day);
-    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
-    await newrewardpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
-
-    await rpool.methods['getReward(address)'](userA, {from:userA});
-    await crv.balanceOf(userA).then(a=>console.log("crv on wallet after old claim: " +a))
-    await newrewardpool.methods['getReward(address)'](userA, {from:userA});
-    await crv.balanceOf(userA).then(a=>console.log("crv on wallet after new claim: " +a))
-
-    //shutdown 2
-    await booster.shutdownPool(1,{from:deployer});
-    console.log("shutdown pool 1 complete");
-   
-
-    //withdraw proper amounts from both pids
-    await curvelp.balanceOf(userA).then(a=>console.log("curve lp balance of A: " +a))
-    await rpool.balanceOf(userA).then(a=>console.log("balance A in pool 0: " +a))
-    await newrewardpool.balanceOf(userA).then(a=>console.log("balance A in pool 1: " +a))
-    await curvelp.balanceOf(booster.address).then(a=>console.log("curve lp on booster: " +a))
-    await booster.shutdownBalances(0).then(a=>console.log("shutdown balances of pid 0: " +a))
-    await booster.shutdownBalances(1).then(a=>console.log("shutdown balances of pid 1: " +a))
-
-    await rpool.withdrawAll(true,{from:userA});
-    console.log("withdrawn 0");
-    await newrewardpool.withdrawAll(true,{from:userA});
-    console.log("withdrawn 1");
-
-
-    await curvelp.balanceOf(userA).then(a=>console.log("curve lp balance of A: " +a))
-    await rpool.balanceOf(userA).then(a=>console.log("balance A in pool 0: " +a))
-    await newrewardpool.balanceOf(userA).then(a=>console.log("balance A in pool 1: " +a))
-    await curvelp.balanceOf(booster.address).then(a=>console.log("curve lp on booster: " +a))
-    await booster.shutdownBalances(0).then(a=>console.log("shutdown balances of pid 0: " +a))
-    await booster.shutdownBalances(1).then(a=>console.log("shutdown balances of pid 1: " +a))
-
-    await rpool.withdraw(web3.utils.toWei("1.0", "ether"),true,{from:userA}).catch(a=>console.log("revert 0: no more deposited balance"));
-    await newrewardpool.withdraw(web3.utils.toWei("1.0", "ether"),true,{from:userA}).catch(a=>console.log("revert 1: no more deposited balance"));
-
-
-    console.log("\n\ncreate new pool")
-    await booster.addPool(curvelp.address, gauge.address, curvePoolFactory,{from:deployer}).catch(a=>console.log("revert: " +a));
-    var plength = await booster.poolLength();
-    console.log("pool count: " +plength);
-    var poolInfo = await booster.poolInfo(plength-1);
-    var newrewardpool = await ConvexRewardPool.at(poolInfo.rewards);
-    console.log("pool info: " +JSON.stringify(poolInfo) );
-
-    //deposit
-    await booster.deposit(2, web3.utils.toWei("10.0", "ether"), {from:userA});
-    console.log("deposited into new pool");
-    await newrewardpool.balanceOf(userA).then(a=>console.log("balance A in pool 2: " +a))
-
-    await booster.isShutdown().then(a=>console.log("is shutdown? " +a));
-    await booster.shutdownSystem({from:deployer});
-    console.log("shutdown system")
-    await booster.isShutdown().then(a=>console.log("is shutdown? " +a));
-
-    console.log("try deposit again");
-    await booster.deposit(2, web3.utils.toWei("10.0", "ether"), {from:userA}).catch(a=>console.log("catch: " +a));
-    
-    var poolInfo = await booster.poolInfo(plength-1);
-    console.log("pool info: " +JSON.stringify(poolInfo) );
-
-    console.log("try set operator");
-    await usingproxy.setOperator(deployer,{from:deployer}).catch(a=>console.log("catch: " +a));
-
-    let newbooster = await Booster.new(usingproxy.address,{from:deployer});
-    console.log("deploy new booster at: " +newbooster.address);
-
-    await usingproxy.setOperator(newbooster.address,{from:userA}).catch(a=>console.log("catch: " +a ));
-    await usingproxy.setOperator(newbooster.address,{from:deployer});
-    await usingproxy.operator().then(a=>console.log("set operator: " +a))
-
-    console.log("\n\n --- withdraw complete ----");
-
-
-    console.log("\n\n >>> auth >>>");
-
-    await usingproxy.owner().then(a=>console.log("proxy owner: " +a))
-    await usingproxy.pendingOwner().then(a=>console.log("proxy pendingOwner: " +a))
-    await usingproxy.setPendingOwner(userZ,{from:userA}).catch(a=>console.log("set pending auth: " +a));
-    await usingproxy.setPendingOwner(userZ,{from:deployer});
-    console.log("set pending")
-    await usingproxy.owner().then(a=>console.log("proxy owner: " +a))
-    await usingproxy.pendingOwner().then(a=>console.log("proxy pendingOwner: " +a))
-
-    await usingproxy.acceptPendingOwner({from:userA}).catch(a=>console.log("accept auth"));
-    await unlockAccount(userZ);
-    await usingproxy.acceptPendingOwner({from:userZ, gasPrice:0});
-
-    await usingproxy.owner().then(a=>console.log("proxy owner: " +a))
-    await usingproxy.pendingOwner().then(a=>console.log("proxy pendingOwner: " +a))
-
-    await curvelp.allowance(usingproxy.address, userZ).then(a=>console.log("allowance check: " +a));
-    var data = curvelp.contract.methods.approve(userZ,web3.utils.toWei("1.0","ether")).encodeABI();
-    await usingproxy.execute(curvelp.address,0,data,{from:userA}).catch(a=>console.log("execute auth: " +a))
-    await unlockAccount(newbooster.address);
-    await usingproxy.execute(curvelp.address,0,data,{from:newbooster.address,gasPrice:0});
-    await curvelp.allowance(usingproxy.address, userZ).then(a=>console.log("allowance check: " +a));
-
-    await usingproxy.claimRewards(gauge.address,{from:userA}).catch(a=>console.log("proxy auth fail: " +a))
-    await usingproxy.claimCrv(gauge.address,addressZero,addressZero,addressZero,{from:userA}).catch(a=>console.log("proxy auth fail: " +a))
-    await usingproxy.withdrawAll(gauge.address,addressZero,{from:userA}).catch(a=>console.log("proxy auth fail: " +a))
-    await usingproxy.withdraw(gauge.address,addressZero,0,{from:userA}).catch(a=>console.log("proxy auth fail: " +a))
-    await usingproxy.rescue(gauge.address,addressZero,{from:userA}).catch(a=>console.log("proxy auth fail: " +a))
-    await usingproxy.deposit(gauge.address,addressZero,0,{from:userA}).catch(a=>console.log("proxy auth fail: " +a))
-
-    console.log("\n\n --- auth complete ----");
 
 
     return;
