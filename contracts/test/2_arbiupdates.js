@@ -227,11 +227,12 @@ contract("Deploy System and test staking/rewards", async accounts => {
     var rewardPoolImplementation = await ConvexRewardPool.new();
     console.log("new reward pool at: " +rewardPoolImplementation.address,{from:deployer});
 
-    await rewardFactory.setImplementation(rewardPoolImplementation.address,{from:multisig,gasPrice:0});
+    // await rewardFactory.setImplementation(rewardPoolImplementation.address,{from:multisig,gasPrice:0});
+    await boosterOwner.setRewardImplementation(rewardPoolImplementation.address,{from:multisig,gasPrice:0});
     console.log("set new reward pool");
 
     console.log("\n\n --- updated ----")
-    return;
+    // return;
 
     console.log("\n\n >>>> add pool >>>>")
     //tricrypto
@@ -240,7 +241,8 @@ contract("Deploy System and test staking/rewards", async accounts => {
     let curvepool = "0x960ea3e3C7FB317332d990873d354E18d7645590";
     let curvePoolFactory = "0xabC000d88f23Bb45525E447528DBF656A9D55bf5";
 
-    await booster.shutdownPool(3,{from:multisig,gasPrice:0});
+    // await booster.shutdownPool(3,{from:multisig,gasPrice:0});
+    await booster.shutdownPool(3,{from:deployer});
     console.log("shutdown current pool");
     await booster.addPool(curvelp.address, gauge.address, curvePoolFactory,{from:deployer});
     console.log("pool added");
