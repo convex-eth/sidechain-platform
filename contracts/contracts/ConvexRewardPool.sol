@@ -368,7 +368,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
 
 
     //deposit/stake on behalf of another account
-    function stakeFor(address _for, uint256 _amount) external nonReentrant returns(bool){
+    function stakeFor(address _for, uint256 _amount) external returns(bool){
         require(msg.sender == convexBooster, "!auth");
         require(_amount > 0, 'RewardPool : Cannot stake 0');
 
@@ -385,7 +385,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
 
     //withdraw balance and unwrap to the underlying lp token
     // function withdrawAndUnwrap(uint256 _amount, bool _claim) public nonReentrant returns(bool){
-    function withdraw(uint256 _amount, bool _claim) public nonReentrant returns(bool){
+    function withdraw(uint256 _amount, bool _claim) public returns(bool){
 
         //checkpoint first if claiming, or burn will call checkpoint anyway
         if(_claim){

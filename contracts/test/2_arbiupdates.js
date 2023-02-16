@@ -329,9 +329,10 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await curvelp.approve(booster.address,web3.utils.toWei("1000000.0", "ether"), {from:userA} );
     console.log("approved lp to booster");
 
-    await booster.depositAll(4, {from:userA}).catch(a=>console.log("caught bad pid: " +a));
-    var tx = await booster.deposit(0, web3.utils.toWei("10", "ether"), {from:userA});
-    // var tx = await booster.depositAll(0, {from:userA});
+    await booster.depositAll(3443, {from:userA}).catch(a=>console.log("caught bad pid: " +a));
+    console.log("deposit to pid: " +(plength-1) );
+    var tx = await booster.deposit(plength-1, web3.utils.toWei("10", "ether"), {from:userA});
+    // var tx = await booster.depositAll(plength-1, {from:userA});
     console.log("deposit and staked in booster: " +tx.receipt.gasUsed);
 
     await rpool.balanceOf(userA).then(a=>console.log("balance in rewards: " +a))
@@ -417,7 +418,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
 
 
-    await rewardManager.setPoolRewardToken(rpool.address, cvx.address, {from:deployer});
+    await rewardManager.setPoolRewardToken(rpool.address, cvx.address, {from:multisig,gasPrice:0});
     console.log("set reward on pool");
     await rpool.rewardLength().then(a=>console.log("reward length: "+a))
 
@@ -432,7 +433,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await extrapool.periodFinish().then(a=>console.log("periodFinish is: " +a))
     await extrapool.rewardRate().then(a=>console.log("rewardRate is: " +a))
 
-    await rewardManager.setRewardDistributor(extrapool.address, deployer, true, {from:deployer} );
+    await rewardManager.setRewardDistributor(extrapool.address, deployer, true, {from:multisig,gasPrice:0} );
     console.log("set reward distributor")
 
     await cvx.approve(extrapool.address, web3.utils.toWei("100000000.0", "ether"), {from:deployer});
@@ -456,11 +457,11 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await poolUtil.aggregateExtraRewardRates(0).then(a=>console.log("aggregateExtraRewardRates: " +JSON.stringify(a)));
 
     await extrapool.balanceOf(rpool.address).then(a=>console.log("weight of pool: " +a))
-    await rewardManager.setPoolWeight(extrapool.address, rpool.address, web3.utils.toWei("1.0", "ether"), {from:deployer});
+    await rewardManager.setPoolWeight(extrapool.address, rpool.address, web3.utils.toWei("1.0", "ether"), {from:multisig,gasPrice:0});
     console.log("set weight");
     await extrapool.balanceOf(rpool.address).then(a=>console.log("weight of pool: " +a))
 
-    await rewardManager.setPoolRewardContract(rpool.address, rewardHook.address, extrapool.address, {from:deployer});
+    await rewardManager.setPoolRewardContract(rpool.address, rewardHook.address, extrapool.address, {from:multisig,gasPrice:0});
     console.log("added reward contract to hook for given pool");
 
 
