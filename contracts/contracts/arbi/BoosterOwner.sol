@@ -133,7 +133,8 @@ contract BoosterOwner is ReentrancyGuard{
         require(poolCount == IOwner(booster).poolLength(), "pool cnt");
 
         //make sure operator did not change during shutdown
-        require(IOwner(voterproxyOwner).operator() == booster, "booster changed");
+        require(IOwner(voterproxy).operator() == booster, "booster changed");
+        
         //replace current voter operator
         IOwner(voterproxyOwner).retireBooster();
     }

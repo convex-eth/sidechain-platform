@@ -351,7 +351,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
 
     console.log("\n\n --- updated ----")
     // return;
-
+    var plength = await booster.poolLength();
     console.log("\n\n >>>> add pool >>>>")
     //tricrypto
     let gauge = await IGauge.at("0x555766f3da968ecBefa690Ffd49A2Ac02f47aa5f");
@@ -405,22 +405,6 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await rpool.initialize(addressZero,addressZero,addressZero,addressZero,addressZero,0).catch(a=>console.log("catch reinit on reward contract: " +a))
 
 
-    // await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +JSON.stringify(a)));
-    // //try add rewards directly on gauge
-    // var gaugeManager = await gauge.manager();
-    // await unlockAccount(gaugeManager);
-
-    // await gauge.add_reward(cvx.address, deployer, {from:gaugeManager, gasPrice:0});
-    // console.log("added cvx rewards directly to gauge");
-
-    // await cvx.approve(gauge.address, web3.utils.toWei("100000000.0", "ether"), {from:deployer});
-    // console.log("distributor approval")
-
-    // await gauge.deposit_reward_token(cvx.address, web3.utils.toWei("10000.0", "ether"), {from:deployer} );
-    // console.log("reward tokens added");
-
-    // await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +JSON.stringify(a)));
-
     console.log("\n\n --- pool initialized ----");
 
     ////  user staking
@@ -428,13 +412,6 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("\n\n >>>> simulate staking >>>>");
     await crv.balanceOf(userA).then(a=>console.log("crv on wallet: " +a))
     await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +JSON.stringify(a)));
-
-    
-    // await gauge.claimable_tokens.call(userZ).then(a=>console.log("earned: " +a ));
-    // await advanceTime(3600);
-    // await gauge.claimable_tokens.call(userZ).then(a=>console.log("earned: " +a ));
-
-    // return;
 
     //transfer lp tokens
     let lpHolder = "0x555766f3da968ecbefa690ffd49a2ac02f47aa5f";
@@ -694,13 +671,6 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await voterProxyOwner.setRetireAccess(deployer,{from:multisig,gasPrice:0});
     await voterProxyOwner.retireAccess(booster.address).then(a=>console.log("retire access: " +a))
 
-    // await booster.shutdownPool(0,{from:deployer});
-    // await booster.shutdownPool(1,{from:deployer});
-    // await booster.shutdownPool(2,{from:deployer});
-    // await booster.shutdownPool(3,{from:deployer});
-    // await booster.shutdownPool(4,{from:deployer});
-    // await booster.shutdownPool(5,{from:deployer});
-    // console.log("shutdown individual pools 0-5");
     for(var i =0; i < plength; i++){
       await booster.shutdownPool(i,{from:deployer});
       console.log("shutdown pool " +i);
@@ -729,9 +699,16 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await usingproxy.operator().then(a=>console.log("new operator: " +a));
 
     await newbooster.shutdownSystem({from:deployer});
+    console.log("shutdown")
+    await voterProxyOwner.setPlaceholderState(false,{from:multisig,gasPrice:0});
+    await voterProxyOwner.setRetireAccess(deployer,{from:multisig,gasPrice:0});
+    await voterProxyOwner.retireBooster({from:deployer});
+    console.log("retire")
+    await usingproxy.operator().then(a=>console.log("placeholder operator: " +a));
     var newbooster = await Booster.new(usingproxy.address,{from:deployer});
     console.log("newbooster2: " +newbooster.address);
-    await voterProxyOwner.setOperator(booster.address,{from:multisig,gasPrice:0}).catch(a=>console.log("revert used old booster: " +a))
+    await voterProxyOwner.setPlaceholderState(true,{from:multisig,gasPrice:0});
+    console.log("shutdown placeholder")
     await voterProxyOwner.setOperator(newbooster.address,{from:multisig,gasPrice:0});
     await usingproxy.operator().then(a=>console.log("new operator: " +a));
 
