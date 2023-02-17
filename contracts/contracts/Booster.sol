@@ -95,6 +95,7 @@ contract Booster is ReentrancyGuard{
     //note: only the pool manager can relinquish control
     function setPoolManager(address _poolM) external {
         require(msg.sender == poolManager, "!auth");
+        require(_poolM != address(0),"invalid address");
         poolManager = _poolM;
     }
 

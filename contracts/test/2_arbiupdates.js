@@ -187,6 +187,20 @@ contract("Deploy System and test staking/rewards", async accounts => {
     // return;
     var booster = await Booster.at(chainContracts.system.booster);
  
+    // console.log("shutting down");
+    // var plength = await booster.poolLength();
+    // console.log("pool count: " +plength);
+    // // await booster.shutdownPool(0,{from:deployer});
+    // // await booster.shutdownPool(1,{from:deployer});
+    // // await booster.shutdownPool(2,{from:deployer});
+    // // await booster.shutdownPool(3,{from:deployer});
+    // // await booster.shutdownPool(4,{from:deployer});
+    // // await booster.shutdownPool(5,{from:deployer});
+    // // await booster.shutdownPool(6,{from:deployer});
+    // await booster.shutdownSystem({from:multisig,gasPrice:0});
+    // console.log("done");
+    // return;
+
     var cvx = await IERC20.at(chainContracts.system.cvx);
 
     var rewardManager = await RewardManager.at(chainContracts.system.rewardManager);
@@ -213,26 +227,125 @@ contract("Deploy System and test staking/rewards", async accounts => {
     rewardManager = await RewardManager.new(booster.address, cvx.address, chainContracts.system.rewardHook, {from:deployer});
     console.log("reward manager: " +rewardManager.address);
 
+    //test transfer
     await usingproxy.setPendingOwner(voterProxyOwner.address,{from:multisig,gasPrice:0});
     await voterProxyOwner.acceptPendingOwner({from:multisig,gasPrice:0});
     console.log("voter proxy ownership transfered");
     await usingproxy.owner().then(a=>console.log("proxy.owner(): " +a));
 
+    await voterProxyOwner.owner().then(a=>console.log("proxyOwner.owner(): " +a))
+    await voterProxyOwner.setProxyOwner({from:multisig,gasPrice:0});
+    await usingproxy.acceptPendingOwner({from:multisig,gasPrice:0});
+    console.log("revert ownership")
+    await usingproxy.owner().then(a=>console.log("proxy.owner(): " +a));
+    await usingproxy.setPendingOwner(voterProxyOwner.address,{from:multisig,gasPrice:0});
+    await voterProxyOwner.acceptPendingOwner({from:multisig,gasPrice:0});
+    console.log("voter proxy ownership transfered");
+    await usingproxy.owner().then(a=>console.log("proxy.owner(): " +a));
+
+    await voterProxyOwner.transferOwnership(deployer,{from:deployer}).catch(a=>console.log("revert access: "+a))
+    await voterProxyOwner.transferOwnership(deployer,{from:multisig,gasPrice:0});
+    console.log("transfer to deployer");
+    await voterProxyOwner.acceptOwnership({from:deployer});
+    await voterProxyOwner.owner().then(a=>console.log("proxyOwner.owner(): " +a));
+    await voterProxyOwner.transferOwnership(multisig,{from:deployer,gasPrice:0});
+    console.log("transfer back to msig");
+    await voterProxyOwner.acceptOwnership({from:multisig,gasPrice:0});
+
+    //test seal
+    await voterProxyOwner.sealOwnership({from:deployer}).catch(a=>console.log("revert access: " +a));
+    await voterProxyOwner.sealOwnership({from:multisig,gasPrice:0});
+    console.log("ownership sealed");
+    await voterProxyOwner.setProxyOwner({from:multisig,gasPrice:0}).catch(a=>console.log("revert sealed: " +a));
+
+    //setRetireAccess
+    await voterProxyOwner.retireAccess(booster.address).then(a=>console.log("retire access: " +a))
+    await voterProxyOwner.setRetireAccess(deployer,{from:deployer}).catch(a=>console.log("revert set depositor access: " +a));
+    await voterProxyOwner.setRetireAccess(boosterOwner.address,{from:multisig,gasPrice:0});
+    await voterProxyOwner.retireAccess(booster.address).then(a=>console.log("retire access set: " +a))
+
+    //set placeholder state
+    await boosterPlaceholder.isShutdown().then(a=>console.log("placeholder isshutdown: " +a));
+    await voterProxyOwner.setPlaceholderState(true,{from:deployer,gasPrice:0}).catch(a=>console.log("revert access: " +a));
+    await voterProxyOwner.setPlaceholderState(true,{from:multisig,gasPrice:0});
+    await boosterPlaceholder.isShutdown().then(a=>console.log("placeholder isshutdown: " +a));
+    await voterProxyOwner.setPlaceholderState(false,{from:multisig,gasPrice:0});
+    await boosterPlaceholder.isShutdown().then(a=>console.log("placeholder isshutdown: " +a));
 
     await booster.setPendingOwner(boosterOwner.address,{from:multisig,gasPrice:0});
     await boosterOwner.acceptPendingOwner({from:multisig,gasPrice:0});
     console.log("booster ownership transfered");
     await booster.owner().then(a=>console.log("booster owner: " +a));
 
-    //TODO: test reverting ownership and sealing
+    //reverting ownership and sealing
+    await boosterOwner.setBoosterOwner({from:multisig,gasPrice:0})
+    await booster.acceptPendingOwner({from:multisig,gasPrice:0});
+    await booster.owner().then(a=>console.log("booster owner reverted: " +a));
+    await booster.setPendingOwner(boosterOwner.address,{from:multisig,gasPrice:0});
+    await boosterOwner.acceptPendingOwner({from:multisig,gasPrice:0});
+    console.log("booster ownership transfered");
+    await booster.owner().then(a=>console.log("booster owner: " +a));
+
+    await boosterOwner.sealOwnership({from:multisig,gasPrice:0});
+    console.log("ownership sealed")
+    await boosterOwner.setBoosterOwner({from:multisig,gasPrice:0}).catch(a=>console.log("revert sealed: " +a));
+
+    await boosterOwner.transferOwnership(deployer,{from:deployer}).catch(a=>console.log("revert access: "+a))
+    await boosterOwner.transferOwnership(deployer,{from:multisig,gasPrice:0});
+    console.log("transfer ownership to deployer");
+    await boosterOwner.acceptOwnership({from:deployer});
+    await boosterOwner.owner().then(a=>console.log("boosterOwner.owner(): " +a));
+    await boosterOwner.transferOwnership(multisig,{from:deployer,gasPrice:0});
+    console.log("transfer back to msig");
+    await boosterOwner.acceptOwnership({from:multisig,gasPrice:0});
+    await boosterOwner.owner().then(a=>console.log("boosterOwner.owner(): " +a));
+
+
+    //test booster functions
+    await booster.rescueManager().then(a=>console.log("rescue manager: " +a));
+    await boosterOwner.setRescueManager(addressZero,{from:deployer,gasPrice:0}).catch(a=>console.log("revert access: " +a));
+    await boosterOwner.setRescueManager(addressZero,{from:multisig,gasPrice:0});
+    await booster.rescueManager().then(a=>console.log("rescue manager: " +a));
+    await boosterOwner.setRescueManager(deployer,{from:multisig,gasPrice:0});
+    await booster.rescueManager().then(a=>console.log("rescue manager: " +a));
+
+    await booster.rewardFactory().then(a=>console.log("reward factory: " +a));
+    await boosterOwner.setRewardFactory(addressZero,{from:multisig,gasPrice:0});
+    await booster.rewardFactory().then(a=>console.log("reward factory (no change): " +a));
+
+
+    await booster.feeDeposit().then(a=>console.log("fee deposit: " +a));
+    await boosterOwner.setFeeDeposit(deployer,{from:deployer,gasPrice:0}).catch(a=>console.log("revert access: " +a));
+    await boosterOwner.setFeeDeposit(deployer,{from:multisig,gasPrice:0});
+    await booster.feeDeposit().then(a=>console.log("fee deposit: " +a));
+    await boosterOwner.setFeeDeposit(feedeposit.address,{from:multisig,gasPrice:0});
+    await booster.feeDeposit().then(a=>console.log("fee deposit: " +a));
+
+
+    //give pool manager to booster owner and let it give back
+    await booster.setPoolManager(boosterOwner.address,{from:deployer});
+    await booster.poolManager().then(a=>console.log("poolManager: " +a));
+    await boosterOwner.setPoolManager(multisig,{from:deployer,gasPrice:0}).catch(a=>console.log("revert access: " +a));
+    await boosterOwner.setPoolManager(addressZero,{from:multisig,gasPrice:0}).catch(a=>console.log("revert invalid address: " +a));
+    await boosterOwner.setPoolManager(deployer,{from:multisig,gasPrice:0});
+    await booster.poolManager().then(a=>console.log("poolManager: " +a));
+
+
+    await booster.fees().then(a=>console.log("fees: " +a));
+    await boosterOwner.setFees(500,{from:deployer,gasPrice:0}).catch(a=>console.log("revert access: " +a));
+    await boosterOwner.setFees(500,{from:multisig,gasPrice:0});
+    await booster.fees().then(a=>console.log("fees: " +a));
+    await boosterOwner.setFees(1700,{from:multisig,gasPrice:0});
+    await booster.fees().then(a=>console.log("fees: " +a));
 
     var rewardPoolImplementation = await ConvexRewardPool.new();
     console.log("new reward pool at: " +rewardPoolImplementation.address,{from:deployer});
 
-    // await rewardFactory.setImplementation(rewardPoolImplementation.address,{from:multisig,gasPrice:0});
+    await boosterOwner.setRewardImplementation(rewardPoolImplementation.address,{from:deployer,gasPrice:0}).catch(a=>console.log("revert access: " +a));
     await boosterOwner.setRewardImplementation(rewardPoolImplementation.address,{from:multisig,gasPrice:0});
     console.log("set new reward pool");
 
+    await boosterOwner.setRewardManager(rewardManager.address,{from:deployer,gasPrice:0}).catch(a=>console.log("revert access: " +a));
     await boosterOwner.setRewardManager(rewardManager.address,{from:multisig,gasPrice:0});
     console.log("set new reward manager");
 
@@ -248,6 +361,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
 
     // await booster.shutdownPool(3,{from:multisig,gasPrice:0});
     await booster.shutdownPool(3,{from:deployer});
+    // await boosterOwner.shutdownPool(3,{from:deployer});
     console.log("shutdown current pool");
     await booster.addPool(curvelp.address, gauge.address, curvePoolFactory,{from:deployer});
     console.log("pool added");
@@ -572,6 +686,56 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("\n\n --- withdraw complete ----");
 
 
+
+    console.log("\n\n >>> shutdown >>>");
+
+    //shutdown system (retire access on/off)
+    await voterProxyOwner.retireAccess(booster.address).then(a=>console.log("retire access: " +a))
+    await voterProxyOwner.setRetireAccess(deployer,{from:multisig,gasPrice:0});
+    await voterProxyOwner.retireAccess(booster.address).then(a=>console.log("retire access: " +a))
+
+    // await booster.shutdownPool(0,{from:deployer});
+    // await booster.shutdownPool(1,{from:deployer});
+    // await booster.shutdownPool(2,{from:deployer});
+    // await booster.shutdownPool(3,{from:deployer});
+    // await booster.shutdownPool(4,{from:deployer});
+    // await booster.shutdownPool(5,{from:deployer});
+    // console.log("shutdown individual pools 0-5");
+    for(var i =0; i < plength; i++){
+      await booster.shutdownPool(i,{from:deployer});
+      console.log("shutdown pool " +i);
+    }
+    console.log("all pools shutdown, shutdown system");
+
+    await boosterOwner.shutdownSystem({from:multisig,gasPrice:0}).catch(a=>console.log("revert retire not set: " +a))
+
+    await voterProxyOwner.setRetireAccess(boosterOwner.address,{from:multisig,gasPrice:0});
+    await voterProxyOwner.retireAccess(booster.address).then(a=>console.log("retire access: " +a))
+    console.log("shutting down...");
+    await boosterOwner.shutdownSystem({from:multisig,gasPrice:0});
+
+    //check placeholder
+    await boosterPlaceholder.isShutdown().then(a=>console.log("placeholder isshutdown: " +a));
+    await voterProxyOwner.setPlaceholderState(true,{from:multisig,gasPrice:0});
+    await boosterPlaceholder.isShutdown().then(a=>console.log("placeholder isshutdown: " +a));
+
+    //try-fail reusing booster
+    await voterProxyOwner.setOperator(booster.address,{from:multisig,gasPrice:0}).catch(a=>console.log("fail operatorm reuse: " +a));
+
+    //make new booster and apply
+    var newbooster = await Booster.new(usingproxy.address,{from:deployer});
+    console.log("newbooster: " +newbooster.address);
+    await voterProxyOwner.setOperator(newbooster.address,{from:multisig,gasPrice:0});
+    await usingproxy.operator().then(a=>console.log("new operator: " +a));
+
+    await newbooster.shutdownSystem({from:deployer});
+    var newbooster = await Booster.new(usingproxy.address,{from:deployer});
+    console.log("newbooster2: " +newbooster.address);
+    await voterProxyOwner.setOperator(booster.address,{from:multisig,gasPrice:0}).catch(a=>console.log("revert used old booster: " +a))
+    await voterProxyOwner.setOperator(newbooster.address,{from:multisig,gasPrice:0});
+    await usingproxy.operator().then(a=>console.log("new operator: " +a));
+
+    console.log("\n\n --- shutdown complete ----");
     return;
   });
 });

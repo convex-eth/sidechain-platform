@@ -12,10 +12,8 @@ interface IPlaceholder{
 }
 
 /*
-Immutable booster owner that requires all pools to be shutdown before shutting down the entire convex system
-A timelock is required if forcing a shutdown if there is a bugged pool that can not be withdrawn from
-
-Allow arbitrary calls to other contracts, but limit how calls are made to Booster
+Immutable voter proxy owner that enforces a used booster can not be used again
+Allow arbitrary calls to other contracts, but limit how calls are made to VoterProxy
 
 */
 contract VoterProxyOwner{
@@ -74,12 +72,7 @@ contract VoterProxyOwner{
         require(!isSealed, "ownership sealed");
 
         //transfer booster ownership to this owner
-        IVoterProxy(voterproxy).setOwner(owner);
-    }
-
-    function setDepositor(address _depositor) external onlyOwner{
-        //set proxy voter depositor
-        IVoterProxy(voterproxy).setDepositor(_depositor);
+        IVoterProxy(voterproxy).setPendingOwner(owner);
     }
 
     function setRetireAccess(address _rmanager) external onlyOwner{

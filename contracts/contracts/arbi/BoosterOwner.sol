@@ -33,11 +33,8 @@ interface IOwner {
 }
 
 /*
-Immutable booster owner that requires all pools to be shutdown before shutting down the entire convex system
-A timelock is required if forcing a shutdown if there is a bugged pool that can not be withdrawn from
-
+Immutable booster owner that makes sure booster was never changed during the shutdown system process and seal setRewardFactory
 Allow arbitrary calls to other contracts, but limit how calls are made to Booster
-
 */
 contract BoosterOwner is ReentrancyGuard{
 
@@ -117,6 +114,7 @@ contract BoosterOwner is ReentrancyGuard{
     }
 
     function setPoolManager(address _poolM) external onlyOwner nonReentrant{
+        require(_poolM != address(0),"invalid address");
         IOwner(booster).setPoolManager(_poolM);
     }
 
