@@ -280,7 +280,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     }
 
     //checkpoint with claim
-    function _checkpoint(address _account, address _claimTo) internal {
+    function _checkpoint(address _account, address _claimTo) internal nonReentrant{
         //update rewards and claim
         updateRewardsAndClaim();
 
@@ -292,7 +292,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     }
 
     //manually checkpoint a user account
-    function user_checkpoint(address _account) external nonReentrant returns(bool) {
+    function user_checkpoint(address _account) external returns(bool) {
         _checkpoint(_account);
         return true;
     }
@@ -300,7 +300,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     //get earned token info
     //Note: The curve gauge function "claimable_tokens" is a write function and thus this is not by default a view
     //change ABI to view to use this off chain
-    function earned(address _account) external returns(EarnedData[] memory claimable) {
+    function earned(address _account) external nonReentrant returns(EarnedData[] memory claimable) {
         
         //because this is a state mutative function
         //we can simplify the earned() logic of all rewards (internal and external)
@@ -342,13 +342,13 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
 
     //set any claimed rewards to automatically go to a different address
     //set address to zero to disable
-    function setRewardRedirect(address _to) external nonReentrant{
+    function setRewardRedirect(address _to) external {
         rewardRedirect[msg.sender] = _to;
         emit RewardRedirected(msg.sender, _to);
     }
 
     //claim reward for given account (unguarded)
-    function getReward(address _account) external nonReentrant {
+    function getReward(address _account) external {
         //check if there is a redirect address
         if(rewardRedirect[_account] != address(0)){
             _checkpoint(_account, rewardRedirect[_account]);
@@ -359,7 +359,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     }
 
     //claim reward for given account and forward (guarded)
-    function getReward(address _account, address _forwardTo) external nonReentrant {
+    function getReward(address _account, address _forwardTo) external {
         //in order to forward, must be called by the account itself
         require(msg.sender == _account, "!self");
         //use _forwardTo address instead of _account
@@ -384,7 +384,6 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
 
 
     //withdraw balance and unwrap to the underlying lp token
-    // function withdrawAndUnwrap(uint256 _amount, bool _claim) public nonReentrant returns(bool){
     function withdraw(uint256 _amount, bool _claim) public returns(bool){
 
         //checkpoint first if claiming, or burn will call checkpoint anyway
@@ -410,7 +409,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
         withdraw(balanceOf(msg.sender),claim);
     }
 
-    function _beforeTokenTransfer(address _from, address _to, uint256 _amount) internal override nonReentrant{
+    function _beforeTokenTransfer(address _from, address _to, uint256 _amount) internal override {
         if(_from != address(0)){
             _checkpoint(_from);
         }
