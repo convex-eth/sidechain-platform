@@ -8,12 +8,15 @@
             "cvx": "0xb952A807345991BD529FDded05009F5e80Fe8F45",
             "proxyFactory": "0xf53173a3104bFdC4eD2FA579089B5e6Bf4fc7a2b",
             "rewardHook": "0xEdCCB35798fae4925718A43cc608aE136208aa8D",
-            "rewardManager": "0x3c995e43E6ddD551E226F4c5544C77BfeD147aB9",
+            "rewardManager": "0xc76e11a1eee43D47B537913Cd197244fe9Fc3414",
             "rewardFactory": "0x8014595F2AB54cD7c604B00E9fb932176fDc86Ae",
-            "rewardPool": "0x3b2D30734491AD77880d31e8aFe2A4d8aC135a9C",
+            "rewardPool": "0xd155b69e058b2bD6D72bE3E977102eC13ab255d6",
             "cvxIncentives": "0x665D4Bea98e3a1849526553453E8369B448C6AD4",
             "feeDeposit": "0xE7CdD5ed586A095e395f2007449721eA2a5B878a",
-            "poolUtilities": "0xB20e684dE561C54021651050F4518dAa1976eB42"
+            "poolUtilities": "0xB20e684dE561C54021651050F4518dAa1976eB42",
+            "boosterPlaceholder": "0xD363d104f604497C4f11B269D8dbf2820ABBF4e0",
+            "voteProxyOwner": "0xB1D7C7bd55d6679E662E3482671d2735de0E69E8",
+            "boosterOwner": "0x2CA7759dcE155e15dF9cDBd8322C8Eb2934c5558"
         },
         "curve": {
             "stablePoolFactory": "",
