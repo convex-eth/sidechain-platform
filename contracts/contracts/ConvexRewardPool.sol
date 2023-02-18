@@ -108,7 +108,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     }
 
     //check curve gauge for any reward tokens
-    function updateRewardList() public {
+    function updateRewardList() internal {
 
         //max rewards 8, need to check if anything new has been added
         for (uint256 i = 0; i < 8; i++) {
@@ -122,7 +122,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
 
     //register an extra reward token to be handled
     // (any new incentive that is not directly on curve gauges)
-    function addExtraReward(address _token) external{
+    function addExtraReward(address _token) external nonReentrant{
         //reward manager can set extra rewards
         require(IBooster(convexBooster).rewardManager() == msg.sender, "!owner");
         
@@ -169,7 +169,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     }
 
     //allow invalidating a reward if the token causes trouble in calcRewardIntegral
-    function invalidateReward(address _token) public {
+    function invalidateReward(address _token) public nonReentrant{
         require(IBooster(convexBooster).rewardManager() == msg.sender, "!owner");
 
         uint256 index = rewardMap[_token];
@@ -184,7 +184,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     }
 
     //set a reward hook that calls an outside contract to pull external rewards
-    function setRewardHook(address _hook) external{
+    function setRewardHook(address _hook) external nonReentrant{
         //reward manager can set reward hook
         require(IBooster(convexBooster).rewardManager() == msg.sender, "!owner");
         rewardHook = _hook;
@@ -342,7 +342,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
 
     //set any claimed rewards to automatically go to a different address
     //set address to zero to disable
-    function setRewardRedirect(address _to) external {
+    function setRewardRedirect(address _to) external nonReentrant{
         rewardRedirect[msg.sender] = _to;
         emit RewardRedirected(msg.sender, _to);
     }
