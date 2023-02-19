@@ -396,17 +396,19 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
 
         uint256 _amount = balanceOf(msg.sender);
 
+        //toggle flag to skip checkpoints
         isEWithdraw = true;
 
         //burn without calling checkpoint (skipped in _beforeTokenTransfer)
         _burn(msg.sender, _amount);
 
+        //retoggle flag to use checkpoints
+        isEWithdraw = false;
+
         //tell booster to withdraw underlying lp tokens directly to user
         IBooster(convexBooster).withdrawTo(convexPoolId,_amount,msg.sender);
 
         emit EmergencyWithdrawn(msg.sender, _amount);
-
-        isEWithdraw = false;
         return true;
     }
 
