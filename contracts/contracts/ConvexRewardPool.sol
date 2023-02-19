@@ -300,44 +300,28 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     //get earned token info
     //Note: The curve gauge function "claimable_tokens" is a write function and thus this is not by default a view
     //change ABI to view to use this off chain
-    function earned(address _account) external nonReentrant returns(EarnedData[] memory claimable) {
+    function earned(address _account) external returns(EarnedData[] memory claimable) {
         
         //because this is a state mutative function
         //we can simplify the earned() logic of all rewards (internal and external)
         //and allow this contract to be agnostic to outside reward contract design
-        //by just claiming everything and checking token balances
-        updateRewardsAndClaim();
-
+        //by just claiming everything and updating state via _checkpoint()
+        _checkpoint(_account);
         uint256 rewardCount = rewards.length;
         claimable = new EarnedData[](rewardCount);
 
         for (uint256 i = 0; i < rewardCount; i++) {
             RewardType storage reward = rewards[i];
 
-            //change in reward is current balance - remaining reward + earned
-            uint256 bal = IERC20(reward.reward_token).balanceOf(address(this));
-            uint256 d_reward = bal - reward.reward_remaining;
-
-            // crv is always slot 0
-            if(i == 0){
-                //check fees
-                uint256 fees = IBooster(convexBooster).calculatePlatformFees(d_reward);
-                if(fees > 0){
-                    d_reward -= fees;
-                }
+            //skip invalidated rewards
+            if(reward.reward_token == address(0)){
+                continue;
             }
-
-            //calc new global integral
-            uint256 I = reward.reward_integral;
-            if (totalSupply() > 0) {
-                I = I + (d_reward * 1e20 / totalSupply());
-            }
-
-            //user claimable amount = previous recorded claimable + new user integral
-            uint256 newlyClaimable = balanceOf(_account) * (I - reward_integral_for[reward.reward_token][_account]) / 1e20;
-            claimable[i].amount = claimable_reward[reward.reward_token][_account] + newlyClaimable;
+    
+            claimable[i].amount = claimable_reward[reward.reward_token][_account];
             claimable[i].token = reward.reward_token;
         }
+        return claimable;
     }
 
     //set any claimed rewards to automatically go to a different address
