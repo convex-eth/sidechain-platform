@@ -187,20 +187,6 @@ contract("Deploy System and test staking/rewards", async accounts => {
     // return;
     var booster = await Booster.at(chainContracts.system.booster);
  
-    // console.log("shutting down");
-    // var plength = await booster.poolLength();
-    // console.log("pool count: " +plength);
-    // // await booster.shutdownPool(0,{from:deployer});
-    // // await booster.shutdownPool(1,{from:deployer});
-    // // await booster.shutdownPool(2,{from:deployer});
-    // // await booster.shutdownPool(3,{from:deployer});
-    // // await booster.shutdownPool(4,{from:deployer});
-    // // await booster.shutdownPool(5,{from:deployer});
-    // // await booster.shutdownPool(6,{from:deployer});
-    // await booster.shutdownSystem({from:multisig,gasPrice:0});
-    // console.log("done");
-    // return;
-
     var cvx = await IERC20.at(chainContracts.system.cvx);
 
     var rewardManager = await RewardManager.at(chainContracts.system.rewardManager);
@@ -218,6 +204,10 @@ contract("Deploy System and test staking/rewards", async accounts => {
 
     console.log("\n\n >>>> add updates >>>>")
 
+    // var rewardPoolImplementation = await ConvexRewardPool.new();
+    // console.log("new reward pool at: " +rewardPoolImplementation.address,{from:deployer});
+    // return;
+
     var boosterPlaceholder = await BoosterPlaceholder.new({from:deployer});
     console.log("placeholder: " +boosterPlaceholder.address);
     var voterProxyOwner = await VoterProxyOwner.new(boosterPlaceholder.address,{from:deployer});
@@ -226,6 +216,14 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("booster owner: " +boosterOwner.address);
     rewardManager = await RewardManager.new(booster.address, cvx.address, chainContracts.system.rewardHook, {from:deployer});
     console.log("reward manager: " +rewardManager.address);
+
+    // return;
+    // await usingproxy.setPendingOwner(voterProxyOwner.address,{from:multisig,gasPrice:0});
+    // await voterProxyOwner.acceptPendingOwner({from:multisig,gasPrice:0});
+    // await booster.setPendingOwner(boosterOwner.address,{from:multisig,gasPrice:0});
+    // await boosterOwner.acceptPendingOwner({from:multisig,gasPrice:0});
+    // await boosterOwner.setRewardImplementation(rewardPoolImplementation.address,{from:multisig,gasPrice:0});
+    // await boosterOwner.setRewardManager(rewardManager.address,{from:multisig,gasPrice:0});
 
     //test transfer
     await usingproxy.setPendingOwner(voterProxyOwner.address,{from:multisig,gasPrice:0});
@@ -612,6 +610,43 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("claimed");
     await crv.balanceOf(userA).then(a=>console.log("crv on wallet A: " +a))
     await cvx.balanceOf(userA).then(a=>console.log("cvx on wallet A: " +a))
+
+    await advanceTime(day);
+    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+    await cvx.balanceOf(userA).then(a=>console.log("cvx on wallet A: " +a))
+    await rewardManager.setPoolInvalidateReward(rpool.address, cvx.address, {from:deployer})
+    console.log("invalidate cvx");
+    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+    await rpool.methods['getReward(address)'](userA, {from:userA});
+    console.log("claimed");
+    await cvx.balanceOf(userA).then(a=>console.log("cvx on wallet A: " +a))
+    await rewardManager.setPoolRewardToken(rpool.address, cvx.address, {from:deployer});
+    console.log("revive cvx");
+    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+    await rpool.methods['getReward(address)'](userA, {from:userA});
+    console.log("claimed");
+    await cvx.balanceOf(userA).then(a=>console.log("cvx on wallet A: " +a))
+
+
+    console.log(">> emergency withdraw");
+    await advanceTime(day);
+    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+    await cvx.balanceOf(userA).then(a=>console.log("cvx on wallet A: " +a))
+    await rpool.balanceOf(userA).then(a=>console.log("balance of A: " +a))
+    await rpool.emergencyWithdraw();
+    console.log("emergency withdraw called");
+    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+    await cvx.balanceOf(userA).then(a=>console.log("cvx on wallet A: " +a))
+    await rpool.balanceOf(userA).then(a=>console.log("balance of A: " +a))
+
+
+    await booster.depositAll(plength-1, {from:userA});
+    console.log("redeposited");
+    await rpool.balanceOf(userA).then(a=>console.log("balance of A: " +a))
+    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+    await advanceTime(day);
+    await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
+
 
     console.log("\n\n --- extra rewards complete ----");
 

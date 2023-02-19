@@ -69,6 +69,12 @@ contract RewardManager{
         emit PoolRewardToken(_pool, _rewardToken);
     }
 
+    //add reward token type to a given pool
+    function setPoolInvalidateReward(address _pool, address _rewardToken) external onlyOwner{
+        IRewards(_pool).invalidateReward(_rewardToken);
+        emit PoolRewardToken(_pool, _rewardToken);
+    }
+
     //add contracts to pool's hook list
     function setPoolRewardContract(address _pool, address _hook, address _rewardContract) external onlyOwner{
         IRewardHook(_hook).addPoolReward(_pool, _rewardContract);

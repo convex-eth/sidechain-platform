@@ -11,6 +11,7 @@ interface IRewards{
     function getReward(address) external;
     function queueNewRewards(uint256) external;
     function addExtraReward(address) external;
+    function invalidateReward(address _token) external;
     function setRewardHook(address) external;
     function user_checkpoint(address _account) external returns(bool);
     function rewardToken() external view returns(address);

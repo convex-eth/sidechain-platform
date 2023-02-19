@@ -46,6 +46,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     address public rewardHook;
     address public crv;
     uint256 public constant maxRewards = 12;
+    bool private isEWithdraw;
 
     //management
     string internal _tokenname;
@@ -54,6 +55,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     //events
     event Staked(address indexed _user, uint256 _amount);
     event Withdrawn(address indexed _user, uint256 _amount);
+    event EmergencyWithdrawn(address indexed _user, uint256 _amount);
     event RewardPaid(address indexed _user, address indexed _rewardToken, address indexed _receiver, uint256 _rewardAmount);
     event RewardAdded(address indexed _rewardToken);
     event RewardInvalidated(address _rewardToken);
@@ -388,17 +390,39 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
         return true;
     }
 
+    //withdraw full balance and unwrap to the underlying lp token
+    //but avoid checkpointing.  will lose non-checkpointed rewards but can withdraw
+    function emergencyWithdraw() public nonReentrant returns(bool){
+
+        uint256 _amount = balanceOf(msg.sender);
+
+        isEWithdraw = true;
+
+        //burn without calling checkpoint (skipped in _beforeTokenTransfer)
+        _burn(msg.sender, _amount);
+
+        //tell booster to withdraw underlying lp tokens directly to user
+        IBooster(convexBooster).withdrawTo(convexPoolId,_amount,msg.sender);
+
+        emit EmergencyWithdrawn(msg.sender, _amount);
+
+        isEWithdraw = false;
+        return true;
+    }
+
     //withdraw full balance
     function withdrawAll(bool claim) external{
         withdraw(balanceOf(msg.sender),claim);
     }
 
     function _beforeTokenTransfer(address _from, address _to, uint256 _amount) internal override {
-        if(_from != address(0)){
-            _checkpoint(_from);
-        }
-        if(_to != address(0)){
-            _checkpoint(_to);
+        if(!isEWithdraw){
+            if(_from != address(0)){
+                _checkpoint(_from);
+            }
+            if(_to != address(0)){
+                _checkpoint(_to);
+            }
         }
     }
 }
