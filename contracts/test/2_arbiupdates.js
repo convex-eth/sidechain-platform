@@ -14,6 +14,7 @@ const RewardManager = artifacts.require("RewardManager");
 const PoolRewardHook = artifacts.require("PoolRewardHook");
 const ExtraRewardPool = artifacts.require("ExtraRewardPool");
 const PoolUtilities = artifacts.require("PoolUtilities");
+const PoolManager = artifacts.require("PoolManager");
 
 const IERC20 = artifacts.require("IERC20");
 const ERC20 = artifacts.require("ERC20");
@@ -217,6 +218,22 @@ contract("Deploy System and test staking/rewards", async accounts => {
     rewardManager = await RewardManager.new(booster.address, cvx.address, chainContracts.system.rewardHook, {from:deployer});
     console.log("reward manager: " +rewardManager.address);
 
+    var extrapool = await ExtraRewardPool.new(booster.address,{from:deployer});
+    var poolmanager = await PoolManager.new(booster.address, extrapool.address, {from:deployer});
+    console.log("pool manager: " +poolmanager.address);
+    
+    await poolmanager.owner().then(a=>console.log("pool manager owner: " +a))
+    await poolmanager.operator().then(a=>console.log("pool manager operator: " +a))
+    await poolmanager.setOwner(multisig,{from:deployer});
+    console.log("set pool manager owner");
+    await poolmanager.owner().then(a=>console.log("pool manager owner: " +a))
+    await poolmanager.operator().then(a=>console.log("pool manager operator: " +a))
+
+    await rewardManager.owner().then(a=>console.log("rmanager owner: " +a));
+    await rewardManager.setPoolRewardRole(poolmanager.address,true,{from:deployer});
+    console.log("give pool manager poolRewardRole");
+
+
     // return;
     // await usingproxy.setPendingOwner(voterProxyOwner.address,{from:multisig,gasPrice:0});
     // await voterProxyOwner.acceptPendingOwner({from:multisig,gasPrice:0});
@@ -325,8 +342,13 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await booster.poolManager().then(a=>console.log("poolManager: " +a));
     await boosterOwner.setPoolManager(multisig,{from:deployer,gasPrice:0}).catch(a=>console.log("revert access: " +a));
     await boosterOwner.setPoolManager(addressZero,{from:multisig,gasPrice:0}).catch(a=>console.log("revert invalid address: " +a));
-    await boosterOwner.setPoolManager(deployer,{from:multisig,gasPrice:0});
+    await boosterOwner.setPoolManager(poolmanager.address,{from:multisig,gasPrice:0});
     await booster.poolManager().then(a=>console.log("poolManager: " +a));
+    console.log("try revert pool manager...");
+    await poolmanager.revertControl({from:multisig,gasPrice:0});
+    await booster.poolManager().then(a=>console.log("reverted pool manager to: " +a));
+    await booster.setPoolManager(poolmanager.address,{from:multisig,gasPrice:0});
+    await booster.poolManager().then(a=>console.log("set pool manager back to contract: " +a));
 
 
     await booster.fees().then(a=>console.log("fees: " +a));
@@ -358,11 +380,13 @@ contract("Deploy System and test staking/rewards", async accounts => {
     let curvePoolFactory = "0xabC000d88f23Bb45525E447528DBF656A9D55bf5";
 
     // await booster.shutdownPool(3,{from:multisig,gasPrice:0});
-    await booster.shutdownPool(3,{from:deployer});
+    // await booster.shutdownPool(3,{from:deployer});
+    await poolmanager.shutdownPool(3,{from:deployer});
     // await boosterOwner.shutdownPool(3,{from:deployer});
-    console.log("shutdown current pool");
-    await booster.addPool(curvelp.address, gauge.address, curvePoolFactory,{from:deployer});
-    console.log("pool added");
+    console.log("shutdown current pool (from pool manager)");
+    // await booster.addPool(curvelp.address, gauge.address, curvePoolFactory,{from:deployer});
+    await poolmanager.addPool(gauge.address, curvePoolFactory,{from:deployer});
+    console.log("pool added (from pool manager)");
     var plength = await booster.poolLength();
     console.log("pool count: " +plength);
 
@@ -536,14 +560,14 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
 
 
-    await rewardManager.setPoolRewardToken(rpool.address, cvx.address, {from:deployer});
+    // await rewardManager.setPoolRewardToken(rpool.address, cvx.address, {from:deployer});
     console.log("set reward on pool");
     await rpool.rewardLength().then(a=>console.log("reward length: "+a))
 
     await rpool.earned.call(userA).then(a=>console.log("earned: " +JSON.stringify(a) ));
 
 
-    var extrapool = await ExtraRewardPool.new(booster.address,{from:deployer});
+    // var extrapool = await ExtraRewardPool.new(booster.address,{from:deployer});
     await extrapool.initialize(cvx.address,{from:deployer});
     console.log("extra pool at " +extrapool.address);
     await extrapool.rewardManager().then(a=>console.log("manager is: " +a))
@@ -579,8 +603,8 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("set weight");
     await extrapool.balanceOf(rpool.address).then(a=>console.log("weight of pool: " +a))
 
-    await rewardManager.setPoolRewardContract(rpool.address, rewardHook.address, extrapool.address, {from:deployer});
-    console.log("added reward contract to hook for given pool");
+    // await rewardManager.setPoolRewardContract(rpool.address, rewardHook.address, extrapool.address, {from:deployer});
+    // console.log("added reward contract to hook for given pool");
 
 
     await poolUtil.gaugeRewardRates(0,0).then(a=>console.log("gaugeRewardRates: " +JSON.stringify(a)));
@@ -707,7 +731,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await voterProxyOwner.retireAccess(booster.address).then(a=>console.log("retire access: " +a))
 
     for(var i =0; i < plength; i++){
-      await booster.shutdownPool(i,{from:deployer});
+      await poolmanager.shutdownPool(i,{from:deployer});
       console.log("shutdown pool " +i);
     }
     console.log("all pools shutdown, shutdown system");

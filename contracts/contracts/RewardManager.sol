@@ -22,6 +22,11 @@ contract RewardManager{
     address public rewardHook;
     address public immutable cvx;
 
+    mapping(address => bool) public poolRewardRole;
+    event AddRewardRole(address indexed _address, bool _valid);
+    mapping(address => bool) public poolWeightRole;
+    event AddWeightRole(address indexed _address, bool _valid);
+
     event PoolWeight(address indexed rewardContract, address indexed pool, uint256 weight);
     event PoolWeights(address indexed rewardContract, address[] pool, uint256[] weight);
     event PoolRewardToken(address indexed pool, address token);
@@ -45,6 +50,16 @@ contract RewardManager{
         _;
     }
 
+    modifier isRewardRole() {
+        require(owner == msg.sender || poolRewardRole[msg.sender], "!r_role");
+        _;
+    }
+
+    modifier isWeightRole() {
+        require(owner == msg.sender || poolWeightRole[msg.sender], "!w_role");
+        _;
+    }
+
     function transferOwnership(address _owner) external onlyOwner{
         pendingowner = _owner;
         emit TransferOwnership(_owner);
@@ -57,6 +72,16 @@ contract RewardManager{
         emit AcceptedOwnership(owner);
     }
 
+    function setPoolRewardRole(address _address, bool _valid) external onlyOwner{
+        poolRewardRole[_address] = _valid;
+        emit AddRewardRole(_address, _valid);
+    }
+
+    function setPoolWeightRole(address _address, bool _valid) external onlyOwner{
+        poolWeightRole[_address] = _valid;
+        emit AddRewardRole(_address, _valid);
+    }
+
     //set default pool hook
     function setPoolHook(address _hook) external onlyOwner{
         rewardHook = _hook;
@@ -64,37 +89,37 @@ contract RewardManager{
     }
 
     //add reward token type to a given pool
-    function setPoolRewardToken(address _pool, address _rewardToken) external onlyOwner{
+    function setPoolRewardToken(address _pool, address _rewardToken) external isRewardRole{
         IRewards(_pool).addExtraReward(_rewardToken);
         emit PoolRewardToken(_pool, _rewardToken);
     }
 
     //add reward token type to a given pool
-    function setPoolInvalidateReward(address _pool, address _rewardToken) external onlyOwner{
+    function setPoolInvalidateReward(address _pool, address _rewardToken) external isRewardRole{
         IRewards(_pool).invalidateReward(_rewardToken);
         emit PoolRewardToken(_pool, _rewardToken);
     }
 
     //add contracts to pool's hook list
-    function setPoolRewardContract(address _pool, address _hook, address _rewardContract) external onlyOwner{
+    function setPoolRewardContract(address _pool, address _hook, address _rewardContract) external isRewardRole{
         IRewardHook(_hook).addPoolReward(_pool, _rewardContract);
         emit PoolRewardContract(_pool, _hook, _rewardContract);
     }
 
     //clear all contracts for pool on given hook
-    function clearPoolRewardContractList(address _pool, address _hook) external onlyOwner{
+    function clearPoolRewardContractList(address _pool, address _hook) external isRewardRole{
         IRewardHook(_hook).clearPoolRewardList(_pool);
         emit PoolRewardContractClear(_pool, _hook);
     }
 
     //set pool weight on a given extra reward contract
-    function setPoolWeight(address _rewardContract, address _pool, uint256 _weight) external onlyOwner{
+    function setPoolWeight(address _rewardContract, address _pool, uint256 _weight) external isWeightRole{
         IRewards(_rewardContract).setWeight(_pool, _weight);
         emit PoolWeight(_rewardContract, _pool, _weight);
     }
 
     //set pool weights on a given extra reward contracts
-    function setPoolWeights(address _rewardContract, address[] calldata _pools, uint256[] calldata _weights) external onlyOwner{
+    function setPoolWeights(address _rewardContract, address[] calldata _pools, uint256[] calldata _weights) external isWeightRole{
         IRewards(_rewardContract).setWeights(_pools, _weights);
         emit PoolWeights(_rewardContract, _pools, _weights);
     }
