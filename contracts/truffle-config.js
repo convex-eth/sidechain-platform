@@ -65,8 +65,14 @@ module.exports = {
       port: 8545,
       network_id: "42161",
       gas: 6721975,
-      gasPrice: 0
-      // gasPrice: 500000000
+      gasPrice: 500000000
+    },
+    debugPoly: {
+      host: "127.0.0.1",
+      port: 8545,
+      network_id: "137",
+      gas: 6721975,
+      gasPrice: 500000000
     },
     debug: {
       host: "127.0.0.1",
@@ -102,6 +108,7 @@ module.exports = {
   ],
   api_keys: {
     etherscan: api_keys.etherscan,
-    arbiscan: api_keys.arbiscan
+    arbiscan: api_keys.arbiscan,
+    polyscan: api_keys.polyscan
   }
 };

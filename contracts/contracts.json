@@ -19,9 +19,32 @@
             "boosterOwner": "0x2CA7759dcE155e15dF9cDBd8322C8Eb2934c5558"
         },
         "curve": {
-            "stablePoolFactory": "",
-            "cryptoPoolFactory": "0xabC000d88f23Bb45525E447528DBF656A9D55bf5",
+            "gaugeFactory": "0xabC000d88f23Bb45525E447528DBF656A9D55bf5",
             "crv": "0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978",
+            "veOracle": "0x12F407340697Ae0b177546E535b91A5be021fBF9"
+        },
+        "pools": [
+        ]
+    },
+    "polygon": {
+        "system": {
+            "deployer": "0x947B7742C403f20e5FaCcDAc5E092C943E7D0277",
+            "multisig": "",
+            "voteProxy": "0x989AEb4d175e16225E39E87d0D97A3360524AD80",
+            "booster": "",
+            "cvx": "0x4257EA7637c355F81616050CbB6a9b709fd72683",
+            "proxyFactory": "",
+            "rewardHook": "",
+            "rewardManager": "",
+            "rewardFactory": "",
+            "rewardPool": "",
+            "cvxIncentives": "",
+            "feeDeposit": "",
+            "poolUtilities": ""
+        },
+        "curve": {
+            "gaugeFactory": "0xabC000d88f23Bb45525E447528DBF656A9D55bf5",
+            "crv": "0x172370d5Cd63279eFa6d502DAB29171933a610AF",
             "veOracle": "0x12F407340697Ae0b177546E535b91A5be021fBF9"
         },
         "pools": [
