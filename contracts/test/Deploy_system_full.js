@@ -145,6 +145,9 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await booster.setRewardManager(rewardManager.address, {from:deployer});
     await booster.rewardManager().then(a=>console.log("reward manager set to " +a));
 
+    await booster.setFactoryCrv(chainContracts.curve.gaugeFactory, chainContracts.curve.crv, {from:deployer});
+    console.log("set factory crv");
+
     let cvxRewards = await ExtraRewardPool.new(booster.address,{from:deployer});
     await cvxRewards.initialize(cvx.address,{from:deployer});
     console.log("cvx rewards at: " +cvxRewards.address);
@@ -184,6 +187,13 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("\n\n --- deployed ----");
 
     console.log(chainContracts);
+    if(config.network == "debugArb" || config.network == "mainnetArb"){
+      contractList.arbitrum = chainContracts;
+    }
+    if(config.network == "debugPoly" || config.network == "mainnetPoly"){
+      contractList.polygon = chainContracts;
+    }
+    jsonfile.writeFileSync("./contracts.json", contractList, { spaces: 4 });
 
     return;
   });
