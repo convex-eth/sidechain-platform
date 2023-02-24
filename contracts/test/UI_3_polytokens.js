@@ -181,6 +181,35 @@ contract("Get lp tokens", async accounts => {
     await curvelp.transfer(userA,web3.utils.toWei("100.0", "ether"),{from:lpHolder,gasPrice:0});
     console.log("lp tokens transfered polygon-CRV+crvUSDBTCETH");
     
+    var booster = await Booster.at(chainContracts.system.booster);
+    var poolManager = await PoolManager.at(chainContracts.system.poolManager);
+    var rewardManager = await RewardManager.at(chainContracts.system.rewardManager);
+    var poolId = 8;
+    var poolInfo = await booster.poolInfo(poolId);
+    console.log("pool info: " +JSON.stringify(poolInfo) );
+
+    console.log(" >>> adding cvx rewards >>>");
+
+    var rpool = await ConvexRewardPool.at(poolInfo.rewards);
+    var cvx = await IERC20.at(chainContracts.system.cvx);
+    var cvxpool = await ExtraRewardPool.at(chainContracts.system.cvxIncentives);
+
+    await rewardManager.setPoolWeight(cvxpool.address, rpool.address, web3.utils.toWei("10000.0", "ether"), {from:deployer});
+    console.log("set pool weight weight");
+
+    await cvx.approve(cvxpool.address, web3.utils.toWei("100000000.0", "ether"), {from:deployer});
+    console.log("distributor approval")
+
+    await cvxpool.queueNewRewards(web3.utils.toWei("10.0", "ether"), {from:deployer} );
+    console.log("rewards queued");
+
+    await cvxpool.periodFinish().then(a=>console.log("cvx periodFinish is: " +a))
+    await cvxpool.rewardRate().then(a=>console.log("cvx rewardRate is: " +a))
+
+    let poolUtil = await PoolUtilities.at(chainContracts.system.poolUtilities);
+
+    await poolUtil.gaugeRewardRates(poolId,0).then(a=>console.log("pool gaugeRewardRates: " +JSON.stringify(a)));
+    await poolUtil.aggregateExtraRewardRates(poolId).then(a=>console.log("pool aggregateExtraRewardRates: " +JSON.stringify(a)));
 
 
     console.log("done");

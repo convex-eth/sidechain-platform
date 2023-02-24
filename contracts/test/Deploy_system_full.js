@@ -184,6 +184,9 @@ contract("Deploy System and test staking/rewards", async accounts => {
     chainContracts.system.poolUtilities = poolUtil.address;
     console.log("poolUtil: " +poolUtil.address);
 
+    await rewardManager.setRewardDistributor(cvxRewards.address, deployer, true, {from:deployer} );
+    console.log("set reward distributor")
+
     console.log("\n\n --- deployed ----");
 
     console.log(chainContracts);
