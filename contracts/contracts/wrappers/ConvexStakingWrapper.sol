@@ -5,6 +5,7 @@ import "../interfaces/IConvexRewardPool.sol";
 import "../interfaces/IBooster.sol";
 import "../interfaces/IRewardHook.sol";
 import "../interfaces/IERC4626.sol";
+import "../interfaces/IOwner.sol";
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
@@ -35,6 +36,7 @@ contract ConvexStakingWrapper is ERC20, IERC4626, ReentrancyGuard {
     address public immutable convexBooster;
     address public immutable crv;
     address public immutable cvx;
+    address public immutable factory;
     address public curveToken;
     address public convexPool;
     uint256 public convexPoolId;
@@ -51,7 +53,6 @@ contract ConvexStakingWrapper is ERC20, IERC4626, ReentrancyGuard {
     //management
     bool public isShutdown;
     bool public isInit;
-    address public owner;
 
     string internal _tokenname;
     string internal _tokensymbol;
@@ -66,7 +67,7 @@ contract ConvexStakingWrapper is ERC20, IERC4626, ReentrancyGuard {
     event HookSet(address _hook);
     event UserCheckpoint(address _userA, address _userB);
 
-    constructor(address _booster, address _crv, address _cvx)
+    constructor(address _booster, address _crv, address _cvx, address _factory)
         ERC20(
             "StakedConvexToken",
             "stkCvx"
@@ -74,13 +75,11 @@ contract ConvexStakingWrapper is ERC20, IERC4626, ReentrancyGuard {
         convexBooster = _booster;
         crv = _crv;
         cvx = _cvx;
+        factory = _factory;
     }
 
-    function initialize(uint256 _poolId)
-    virtual external {
+    function initialize(uint256 _poolId) virtual external {
         require(!isInit,"already init");
-        owner = msg.sender;
-        emit OwnershipTransferred(address(0), owner);
 
         (address _lptoken, , address _rewards, , ) = IBooster(convexBooster).poolInfo(_poolId);
         curveToken = _lptoken;
@@ -112,19 +111,8 @@ contract ConvexStakingWrapper is ERC20, IERC4626, ReentrancyGuard {
     }
 
     modifier onlyOwner() {
-        require(owner == msg.sender, "Ownable: caller is not the owner");
+        require(IOwner(factory).owner() == msg.sender, "!factory_owner");
         _;
-    }
-
-    function transferOwnership(address newOwner) public virtual onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
-        emit OwnershipTransferred(owner, newOwner);
-        owner = newOwner;
-    }
-
-    function renounceOwnership() public virtual onlyOwner {
-        emit OwnershipTransferred(owner, address(0));
-        owner = address(0);
     }
 
     function shutdown() external onlyOwner {
