@@ -38,8 +38,8 @@
             "rewardFactory": "0xCF50b810E57Ac33B91dCF525C6ddd9881B139332",
             "rewardPool": "0x698b7c31005A7172ea4bdb262911ce6dBAE43D15",
             "cvxIncentives": "0xA46944D0845F786117D0e1034fC10585747C861b",
-            "feeDeposit": "0x1711D36A9fcC3378A6EF61f197AAF0D1433d2F45",
-            "poolUtilities": "0x824bb95BF47BC44c22EcAe532efCf4A95dE6Fd04",
+            "feeDeposit": "0xA14c5dE6009CC361157d3C943830f9A2598a5c62",
+            "poolUtilities": "0xce084CfFd6A1AF01395700B309a5c06e3Db4Ec94",
             "poolManager": "0xFC0A2FfDea23804494aA1707741E5A6Eaa2f8017"
         },
         "curve": {

@@ -336,14 +336,17 @@ contract Booster is ReentrancyGuard{
     }
 
     //claim crv for a pool from the pool's factory and send to rewards
-    function claimCrv(uint256 _pid, address _gauge) external nonReentrant{
+    function claimCrv(uint256 _pid, address _gauge) external {
         //can only be called by the pool's reward contract
         address rewardContract = poolInfo[_pid].rewards;
         require(msg.sender == rewardContract,"!auth");
 
-        //claim crv and redirect to the reward contract
-        address _factory = poolInfo[_pid].factory;
-        IStaker(staker).claimCrv(factoryCrv[_factory], _factory, _gauge, rewardContract);
+        //only claim if the pool isnt shutdown, but no need to revert
+        if(!poolInfo[_pid].shutdown){
+            //claim crv and redirect to the reward contract
+            address _factory = poolInfo[_pid].factory;
+            IStaker(staker).claimCrv(factoryCrv[_factory], _factory, _gauge, rewardContract);
+        }
     }
 
     //set a gauge's redirect setting to claim extra rewards directly to a reward contract 
