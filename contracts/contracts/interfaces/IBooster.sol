@@ -18,4 +18,6 @@ interface IBooster {
    function activeMap(address) external view returns(bool);
    function fees() external view returns(uint256);
    function setPoolManager(address _poolM) external;
+   function deposit(uint256 _pid, uint256 _amount) external returns(bool);
+   function depositAll(uint256 _pid) external returns(bool);
 }
