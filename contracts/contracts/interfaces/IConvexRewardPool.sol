@@ -34,4 +34,5 @@ interface IConvexRewardPool{
     function stakeFor(address _for, uint256 _amount) external returns(bool);
     function withdraw(uint256 amount, bool claim) external returns(bool);
     function withdrawAll(bool claim) external;
+    function emergencyWithdraw(uint256 _amount) external returns(bool);
 }

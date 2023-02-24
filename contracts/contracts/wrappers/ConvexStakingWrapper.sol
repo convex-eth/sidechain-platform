@@ -4,6 +4,7 @@ pragma solidity 0.8.10;
 import "../interfaces/IConvexRewardPool.sol";
 import "../interfaces/IBooster.sol";
 import "../interfaces/IRewardHook.sol";
+import "../interfaces/IERC4626.sol";
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
@@ -14,7 +15,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 //if used as collateral some modifications will be needed to fit the specific platform
 
 //Based on Curve.fi's gauge wrapper implementations at https://github.com/curvefi/curve-dao-contracts/tree/master/contracts/gauges/wrappers
-contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
+contract ConvexStakingWrapper is ERC20, IERC4626, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     struct EarnedData {
@@ -408,7 +409,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
     }
 
     //deposit a curve token
-    function deposit(uint256 _amount, address _to) external {
+    function deposit(uint256 _amount, address _to) public returns (uint256){
         require(!isShutdown, "shutdown");
 
         //dont need to call checkpoint since _mint() will
@@ -420,24 +421,119 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
         }
 
         emit Deposited(msg.sender, _to, _amount, true);
+        return _amount;
     }
-    //TODO mint
 
     //withdraw to curve lp token
-    function withdraw(uint256 _amount) external {
+    function withdraw(uint256 _amount) public returns (uint256){
 
         //dont need to call checkpoint since _burn() will
         if (_amount > 0) {
             _burn(msg.sender, _amount);
-            IConvexRewardPool(convexPool).withdraw(_amount, false);
+            if(isShutdown){
+                //if the wrapper is shutdown, use emergency withdraw as a precaution since this wrapper doesnt know the reason.
+                //assuming claiming still works, it is still possible to claim some rewards
+                //by calling the unguarded claim on the base pool and moving rewards to the
+                //wrapper before withdrawing/claiming
+                IConvexRewardPool(convexPool).emergencyWithdraw(_amount);
+            }else{
+                IConvexRewardPool(convexPool).withdraw(_amount, false);
+            }
             IERC20(curveToken).safeTransfer(msg.sender, _amount);
         }
 
         emit Withdrawn(msg.sender, _amount, false);
+        return _amount;
     }
-    //TODO redeem
 
-    function _beforeTokenTransfer(address _from, address _to, uint256 _amount) internal override {
+    function _beforeTokenTransfer(address _from, address _to, uint256) internal override {
         _checkpoint([_from, _to]);
+    }
+    
+    
+
+    ///  IERC 4626 ///
+    //add in erc4626 style deposit/withdraws too just to make integrations easier
+    //the wrapper does not use shares
+
+    function mint(uint256 _shares, address _to) external override returns (uint256){
+        return deposit(_shares,_to);
+    }
+
+    function withdraw(uint256 _amount, address _receiver, address ) public override returns(uint256 shares){
+        //dont need to call checkpoint since _burn() will
+        if (_amount > 0) {
+            _burn(msg.sender, _amount);
+            if(isShutdown){
+                //if the wrapper is shutdown, use emergency withdraw as a precaution since this wrapper doesnt know the reason.
+                //assuming claiming still works, it is still possible to claim some rewards
+                //by calling the unguarded claim on the base pool and moving rewards to the
+                //wrapper before withdrawing/claiming
+                IConvexRewardPool(convexPool).emergencyWithdraw(_amount);
+            }else{
+                IConvexRewardPool(convexPool).withdraw(_amount, false);
+            }
+            IERC20(curveToken).safeTransfer(_receiver, _amount);
+        }
+
+        emit Withdrawn(msg.sender, _amount, false);
+        return _amount;
+    }
+
+    function redeem(uint256 _shares, address _receiver, address _owner) public override returns (uint256 assets){
+        return withdraw(_shares, _receiver, _owner);
+    }
+
+    function asset() external override view returns (address){
+        return curveToken;
+    }
+
+    function totalAssets() public override view returns (uint256){
+        return IConvexRewardPool(convexPool).balanceOf(address(this));
+    }
+
+    function convertToShares(uint256 _assets) public override pure returns (uint256){
+        return _assets;
+    }
+
+    function convertToAssets(uint256 _shares) public override pure returns (uint256){
+        return _shares;
+    }
+
+    function convertToSharesRoundUp(uint256 _assets) internal pure returns (uint256){
+        return convertToShares(_assets);
+    }
+
+    function convertToAssetsRoundUp(uint256 _shares) internal pure returns (uint256){
+        return convertToAssets(_shares);
+    }
+
+    function maxDeposit(address) external override view returns (uint256){
+        if(isShutdown) return 0;
+
+        return type(uint256).max;
+    }
+    function maxMint(address) external override view returns (uint256){
+        if(isShutdown) return 0;
+
+        return type(uint256).max;
+    }
+    function previewDeposit(uint256 _amount) public override pure returns (uint256){
+        return convertToShares(_amount);
+    }
+    function previewMint(uint256 _shares) public override pure returns (uint256){
+        return convertToAssetsRoundUp(_shares); //round up
+    }
+    function maxWithdraw(address _owner) external override view returns (uint256){
+        return convertToAssets(balanceOf(_owner));
+    }
+    function previewWithdraw(uint256 _amount) public override pure returns (uint256){
+        return convertToSharesRoundUp(_amount); //round up
+    }
+    function maxRedeem(address _owner) external override view returns (uint256){
+        return balanceOf(_owner);
+    }
+    function previewRedeem(uint256 _shares) public override pure returns (uint256){
+        return convertToAssets(_shares);
     }
 }

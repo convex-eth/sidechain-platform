@@ -390,11 +390,9 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
         return true;
     }
 
-    //withdraw full balance and unwrap to the underlying lp token
+    //withdraw balance and unwrap to the underlying lp token
     //but avoid checkpointing.  will lose non-checkpointed rewards but can withdraw
-    function emergencyWithdraw() public nonReentrant returns(bool){
-
-        uint256 _amount = balanceOf(msg.sender);
+    function emergencyWithdraw(uint256 _amount) public nonReentrant returns(bool){
 
         //toggle flag to skip checkpoints
         isEWithdraw = true;
@@ -417,7 +415,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
         withdraw(balanceOf(msg.sender),claim);
     }
 
-    function _beforeTokenTransfer(address _from, address _to, uint256 _amount) internal override {
+    function _beforeTokenTransfer(address _from, address _to, uint256) internal override {
         if(!isEWithdraw){
             if(_from != address(0)){
                 _checkpoint(_from);
