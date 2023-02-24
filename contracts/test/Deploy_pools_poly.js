@@ -109,10 +109,14 @@ contract("Deploy pools", async accounts => {
       "0x0e2f214b8f5d0cca011a8298bb907fb62f535160"
       ];
 
+    let poolUtil = await PoolUtilities.at(chainContracts.system.poolUtilities);
+
     for(g in gauges){
-      console.log("add pool with gauge: " +gauges[g]);
+      console.log("\n\nadd pool with gauge: " +gauges[g]);
       await poolManager.addPool(gauges[g], chainContracts.curve.gaugeFactory, {from:deployer});
       console.log("pool created");
+
+      await poolUtil.gaugeRewardRates(g,0).then(a=>console.log("pool gaugeRewardRates: " +JSON.stringify(a)));
     }
 
 

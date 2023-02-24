@@ -174,13 +174,13 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await booster.setRewardFactory(rewardFactory.address, {from:deployer});
     console.log("booster reward factory set");
 
-    let feedeposit = await FeeDeposit.new(deployer);
+    let feedeposit = await FeeDeposit.new(deployer,{from:deployer});
     chainContracts.system.feeDeposit = feedeposit.address;
     console.log("fee deposit at: " +feedeposit.address);
     await booster.setFeeDeposit(feedeposit.address, {from:deployer});
     console.log("fee deposit set on booster");
 
-    let poolUtil = await PoolUtilities.new(booster.address, crv.address);
+    let poolUtil = await PoolUtilities.new(booster.address, crv.address,{from:deployer});
     chainContracts.system.poolUtilities = poolUtil.address;
     console.log("poolUtil: " +poolUtil.address);
 
