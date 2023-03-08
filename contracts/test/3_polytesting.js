@@ -188,6 +188,11 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("\n\n >>>> deploy pools >>>>")
 
    var usingproxy = await VoterProxy.at(chainContracts.system.voteProxy);
+   await usingproxy.owner().then(a=>console.log("current proxy owner: " +a))
+   await usingproxy.setPendingOwner(multisig,{from:deployer});
+   await usingproxy.pendingOwner().then(a=>console.log("current proxy pending owner: " +a))
+   await usingproxy.acceptPendingOwner({from:multisig,gasPrice:0})
+   await usingproxy.owner().then(a=>console.log("new proxy owner: " +a))
 
     // return;
     var booster = await Booster.at(chainContracts.system.booster);
@@ -210,7 +215,8 @@ contract("Deploy System and test staking/rewards", async accounts => {
     var plength = await booster.poolLength();
     console.log("pool count: " +plength);
 
-    var poolInfo = await booster.poolInfo(plength-1);
+    var usePid = 8;
+    var poolInfo = await booster.poolInfo(usePid);
     console.log("pool info: " +JSON.stringify(poolInfo) );
 
     var curvelpCheck = await ERC20.at(poolInfo.lptoken);
@@ -258,9 +264,9 @@ contract("Deploy System and test staking/rewards", async accounts => {
     await curvelp.approve(booster.address,web3.utils.toWei("1000000.0", "ether"), {from:userA} );
     console.log("approved lp to booster");
 
-    console.log("deposit into pid " +(plength-1) );
-    var tx = await booster.deposit(plength-1, web3.utils.toWei("10", "ether"), {from:userA});
-    // var tx = await booster.depositAll(plength-1, {from:userA});
+    console.log("deposit into pid " +usePid );
+    var tx = await booster.deposit(usePid, web3.utils.toWei("10", "ether"), {from:userA});
+    // var tx = await booster.depositAll(usePid, {from:userA});
     console.log("deposit and staked in booster: " +tx.receipt.gasUsed);
 
     await rpool.balanceOf(userA).then(a=>console.log("balance in rewards: " +a))

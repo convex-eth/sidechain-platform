@@ -54,6 +54,12 @@ module.exports = {
       gasLimit: 6721975,
       gasPrice: 500000000
     },
+    mainnetPoly: {
+      provider: () => new HDWalletProvider(api_keys.mnemonic, api_keys.provider_polygon_llama),
+      network_id: 137,
+      // gasLimit: 6721975,
+      gasPrice: 200000000000
+    },
     mainnetOp: {
       provider: () => new HDWalletProvider(api_keys.mnemonic, api_keys.provider_optimism),
       network_id: 1, 
@@ -109,6 +115,6 @@ module.exports = {
   api_keys: {
     etherscan: api_keys.etherscan,
     arbiscan: api_keys.arbiscan,
-    polyscan: api_keys.polyscan
+    polygonscan: api_keys.polyscan
   }
 };
