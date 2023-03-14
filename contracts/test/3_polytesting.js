@@ -331,6 +331,32 @@ contract("Deploy System and test staking/rewards", async accounts => {
     console.log("\n\n --- withdraw complete ----");
 
 
+    console.log("\n\n >>> shutdown >>>");
+
+    var tx = await booster.deposit(usePid, web3.utils.toWei("10", "ether"), {from:userA});
+    console.log("deposit back in booster: " +tx.receipt.gasUsed);
+
+    await poolManager.shutdownPool(usePid,{from:deployer});
+    console.log("pool shutdown")
+    await booster.shutdownBalances(usePid).then(a=>console.log("shutdown balances: " +a))
+
+    await rpool.withdrawAll(true,{from:userA});
+    console.log("withdrawn");
+
+    await booster.shutdownBalances(usePid).then(a=>console.log("shutdown balances: " +a))
+
+    await booster.shutdownSystem({from:deployer});
+    console.log("system shutdown");
+
+    await booster.shutdownBalances(usePid).then(a=>console.log("shutdown balances: " +a))
+
+    var newbooster = await Booster.new(usingproxy.address, {from:deployer});
+    console.log("new booster: " +newbooster.address);
+
+    await usingproxy.operator().then(a=>console.log("proxy operator: " +a));
+    await usingproxy.setOperator(newbooster.address,{from:multisig,gasPrice:0});
+    await usingproxy.operator().then(a=>console.log("proxy operator: " +a));
+
     return;
   });
 });
