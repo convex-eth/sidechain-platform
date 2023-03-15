@@ -26,8 +26,8 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
 
     struct RewardType {
         address reward_token;
-        uint128 reward_integral;
-        uint128 reward_remaining;
+        uint256 reward_integral;
+        uint256 reward_remaining;
     }
 
     //pool and system info
@@ -46,7 +46,6 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     address public rewardHook;
     address public crv;
     uint256 public constant maxRewards = 12;
-    uint256 private constant minimumSupply = 1e16;
     bool private isEWithdraw;
 
     //management
@@ -225,7 +224,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
         RewardType storage reward = rewards[_index];
         //skip invalidated rewards
          //if a reward token starts throwing an error, calcRewardIntegral needs a way to exit
-         if(totalSupply() < minimumSupply || reward.reward_token == address(0)){
+         if(reward.reward_token == address(0)){
             return;
          }
 
@@ -247,7 +246,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
 
         //update the global integral
         if (totalSupply() > 0 && (bal - reward.reward_remaining) > 0) {
-            reward.reward_integral = reward.reward_integral + uint128( (bal - reward.reward_remaining) * 1e20 / totalSupply());
+            reward.reward_integral = reward.reward_integral + ((bal - reward.reward_remaining) * 1e20 / totalSupply());
         }
 
         //update user integrals
@@ -255,7 +254,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
         if(_claimTo != address(0) || userI < reward.reward_integral){
             //_claimTo address non-zero means its a claim 
             if(_claimTo != address(0)){
-                uint256 receiveable = claimable_reward[reward.reward_token][_account] + (balanceOf(_account) * uint256(reward.reward_integral - userI) / 1e20);
+                uint256 receiveable = claimable_reward[reward.reward_token][_account] + (balanceOf(_account) * (reward.reward_integral - userI) / 1e20);
                 if(receiveable > 0){
                     claimable_reward[reward.reward_token][_account] = 0;
                     IERC20(reward.reward_token).safeTransfer(_claimTo, receiveable);
@@ -264,7 +263,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
                     bal -= receiveable;
                 }
             }else{
-                claimable_reward[reward.reward_token][_account] = claimable_reward[reward.reward_token][_account] + ( balanceOf(_account) * uint256(reward.reward_integral - userI) / 1e20);
+                claimable_reward[reward.reward_token][_account] = claimable_reward[reward.reward_token][_account] + ( balanceOf(_account) * (reward.reward_integral - userI) / 1e20);
             }
             reward_integral_for[reward.reward_token][_account] = reward.reward_integral;
         }
@@ -272,7 +271,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
 
         //update remaining reward so that next claim can properly calculate the balance change
         if(bal != reward.reward_remaining){
-            reward.reward_remaining = uint128(bal);
+            reward.reward_remaining = bal;
         }
     }
 
