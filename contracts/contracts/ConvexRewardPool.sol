@@ -46,6 +46,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     address public rewardHook;
     address public crv;
     uint256 public constant maxRewards = 12;
+    uint256 private constant minimumSupply = 1e16;
     bool private isEWithdraw;
 
     //management
@@ -224,7 +225,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
         RewardType storage reward = rewards[_index];
         //skip invalidated rewards
          //if a reward token starts throwing an error, calcRewardIntegral needs a way to exit
-         if(reward.reward_token == address(0)){
+         if(totalSupply() < minimumSupply || reward.reward_token == address(0)){
             return;
          }
 
