@@ -99,7 +99,6 @@ contract("Deploy pools", async accounts => {
     var gauges = [
       "0xF2dDF89C04d702369Ab9eF8399Edb99a76e951Ce",
       "0xCE5F24B7A95e9cBa7df4B54E911B4A3Dc8CDAf6f",
-      "0xDB3fd1bfC67b5D4325cb31C04E0Cae52f1787FD6",
       "0x555766f3da968ecBefa690Ffd49A2Ac02f47aa5f",
       "0x6339eF8Df0C2d3d3E7eE697E241666a916B81587",
       "0x95285Ea6fF14F80A2fD3989a6bAb993Bd6b5fA13"
@@ -117,7 +116,7 @@ contract("Deploy pools", async accounts => {
     console.log("shudown pool");
     await poolManager.shutdownPool(5,{from:deployer});
     console.log("shudown pool");
-    
+
     for(g in gauges){
       console.log("\n\nadd pool " +g +" with gauge: " +gauges[g]);
       await poolManager.addPool(gauges[g], chainContracts.curve.gaugeFactory, {from:deployer});
