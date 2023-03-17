@@ -20,13 +20,13 @@ const IERC20 = artifacts.require("IERC20");
 const ERC20 = artifacts.require("ERC20");
 
 
-const unlockAccount = async (address) => {
+const addAccount = async (address) => {
   return new Promise((resolve, reject) => {
     web3.currentProvider.send(
       {
         jsonrpc: "2.0",
-        method: "evm_unlockUnknownAccount",
-        params: [address],
+        method: "evm_addAccount",
+        params: [address, "passphrase"],
         id: new Date().getTime(),
       },
       (err, result) => {
@@ -37,6 +37,74 @@ const unlockAccount = async (address) => {
       }
     );
   });
+};
+
+const unlockAccount = async (address) => {
+  await addAccount(address);
+  return new Promise((resolve, reject) => {
+    web3.currentProvider.send(
+      {
+        jsonrpc: "2.0",
+        method: "personal_unlockAccount",
+        params: [address, "passphrase"],
+        id: new Date().getTime(),
+      },
+      (err, result) => {
+        if (err) {
+          return reject(err);
+        }
+        return resolve(result);
+      }
+    );
+  });
+};
+
+const send = payload => {
+  if (!payload.jsonrpc) payload.jsonrpc = '2.0';
+  if (!payload.id) payload.id = new Date().getTime();
+
+  return new Promise((resolve, reject) => {
+    web3.currentProvider.send(payload, (error, result) => {
+      if (error) return reject(error);
+
+      return resolve(result);
+    });
+  });
+};
+
+/**
+ *  Mines a single block in Ganache (evm_mine is non-standard)
+ */
+const mineBlock = () => send({ method: 'evm_mine' });
+const mineMultiBlock = (blockCnt) => send({ method: 'evm_mine', options:{blocks:blockCnt } });
+/**
+ *  Gets the time of the last block.
+ */
+const currentTime = async () => {
+  const { timestamp } = await web3.eth.getBlock('latest');
+  return timestamp;
+};
+
+/**
+ *  Increases the time in the EVM.
+ *  @param seconds Number of seconds to increase the time by
+ */
+const fastForward = async seconds => {
+  // It's handy to be able to be able to pass big numbers in as we can just
+  // query them from the contract, then send them back. If not changed to
+  // a number, this causes much larger fast forwards than expected without error.
+  if (BN.isBN(seconds)) seconds = seconds.toNumber();
+
+  // And same with strings.
+  if (typeof seconds === 'string') seconds = parseFloat(seconds);
+
+  await send({
+    method: 'evm_increaseTime',
+    params: [seconds],
+  });
+
+  // await mineBlock();
+  await mineMultiBlock(1000);
 };
 
 
@@ -104,18 +172,21 @@ contract("Deploy pools", async accounts => {
       "0x95285Ea6fF14F80A2fD3989a6bAb993Bd6b5fA13"
       ];
 
-    await poolManager.shutdownPool(0,{from:deployer});
-    console.log("shudown pool");
-    await poolManager.shutdownPool(1,{from:deployer});
-    console.log("shudown pool");
-    await poolManager.shutdownPool(2,{from:deployer});
-    console.log("shudown pool");
-    await poolManager.shutdownPool(3,{from:deployer});
-    console.log("shudown pool");
-    await poolManager.shutdownPool(4,{from:deployer});
-    console.log("shudown pool");
-    await poolManager.shutdownPool(5,{from:deployer});
-    console.log("shudown pool");
+    for(var i = 0; i < 6; i++){
+      console.log("--- pool " +i +" ----")
+      var pinfo = await booster.poolInfo(i);
+      //console.log("pinfo: " +JSON.stringify(pinfo));
+      var lp = await ERC20.at(pinfo.lptoken)
+      await lp.name().then(a=>console.log("lp token " +a))
+      var rewards = await ConvexRewardPool.at(pinfo.rewards);
+      await rewards.rewards(0).then(a=>console.log("reward data: " +JSON.stringify(a)))
+      await rewards.user_checkpoint(addressZero);
+      console.log("checkpoint " +i)
+      await rewards.rewards(0).then(a=>console.log("reward data: " +JSON.stringify(a)))
+      await poolManager.shutdownPool(i,{from:deployer});
+      console.log("shudown pool " +i);
+      console.log("\n\n")
+    }
 
     for(g in gauges){
       console.log("\n\nadd pool " +g +" with gauge: " +gauges[g]);
@@ -123,9 +194,30 @@ contract("Deploy pools", async accounts => {
       console.log("pool created");
     }
 
-
     console.log("done");
 
+
+    // console.log(" test withdraw and restake ")
+
+    // var triinfo = await booster.poolInfo(3);
+    // var trirewards = await ConvexRewardPool.at(triinfo.rewards);
+    // var balance = await trirewards.balanceOf(userZ);//.then(a=>console.log("user z: " +a));
+    // console.log("balance: " +balance)
+    // await unlockAccount(userZ);
+    // await trirewards.withdraw(balance,true,{from:userZ});
+    // console.log("withdrawn");
+    // var trilp = await IERC20.at(triinfo.lptoken);
+    // await trilp.balanceOf(userZ).then(a=>console.log("lp tokens on user z: " +a));
+
+
+    // var newtriinfo = await booster.poolInfo(8);
+    // console.log("pinfo 8: " +JSON.stringify(newtriinfo));
+    // var newrewards = await ConvexRewardPool.at(newtriinfo.rewards);
+    // await booster.depositAll(8,{from:userZ});
+    // await newrewards.balanceOf(userZ).then(a=>console.log("new staked balance: "+a))
+    // await newrewards.earned.call(userZ).then(a=>console.log("earned: " +JSON.stringify(a) ));
+    // await advanceTime(day);
+    // await newrewards.earned.call(userZ).then(a=>console.log("earned: " +JSON.stringify(a) ));
     return;
   });
 });
