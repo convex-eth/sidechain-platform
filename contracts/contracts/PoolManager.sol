@@ -11,10 +11,14 @@ Pool Manager
 contract PoolManager{
 
     address public owner;
+    address public pendingOwner;
     address public operator;
     address public immutable booster;
     address public immutable cvxRewards;
 
+    event SetPendingOwner(address indexed _address);
+    event OwnerChanged(address indexed _address);
+    event PoolAdded(address indexed _gauge, address _pool);
 
     constructor(address _booster, address _cvxRewards){
         owner = msg.sender;
@@ -33,9 +37,19 @@ contract PoolManager{
         _;
     }
 
-    //set owner - only OWNER
-    function setOwner(address _owner) external onlyOwner{
-        owner = _owner;
+    //set pending owner
+    function setPendingOwner(address _po) external onlyOwner{
+        pendingOwner = _po;
+        emit SetPendingOwner(_po);
+    }
+
+    //claim ownership
+    function acceptPendingOwner() external {
+        require(pendingOwner != address(0) && msg.sender == pendingOwner, "!p_owner");
+
+        owner = pendingOwner;
+        pendingOwner = address(0);
+        emit OwnerChanged(owner);
     }
 
     //set operator - only OWNER
@@ -69,6 +83,7 @@ contract PoolManager{
         IRewardManager(rewardmanager).setPoolRewardToken( pool,  IRewardManager(rewardmanager).cvx() );
         IRewardManager(rewardmanager).setPoolRewardContract( pool, IRewardManager(rewardmanager).rewardHook(), cvxRewards );
 
+        emit PoolAdded(_gauge, pool);
         return true;
     }
 

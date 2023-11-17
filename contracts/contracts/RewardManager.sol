@@ -60,7 +60,7 @@ contract RewardManager{
         _;
     }
 
-    function transferOwnership(address _owner) external onlyOwner{
+    function setPendingOwner(address _owner) external onlyOwner{
         pendingowner = _owner;
         emit TransferOwnership(_owner);
     }

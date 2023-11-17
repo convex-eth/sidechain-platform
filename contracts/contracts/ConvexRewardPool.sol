@@ -245,7 +245,7 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
         }
 
         //update the global integral
-        if (totalSupply() > 0 && (bal - reward.reward_remaining) > 0) {
+        if (totalSupply() > 0 && bal > reward.reward_remaining) {
             reward.reward_integral = reward.reward_integral + ((bal - reward.reward_remaining) * 1e20 / totalSupply());
         }
 
