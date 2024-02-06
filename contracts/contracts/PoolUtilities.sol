@@ -95,7 +95,11 @@ contract PoolUtilities{
         //loop through rewards
         for(uint256 i = 0; i < gaugeRewards; i++){
             address rt = IGauge(gauge).reward_tokens(i);
-            (,, uint256 rrate,,) = IGauge(gauge).reward_data(rt);
+            (,uint256 period_finish,uint256 rrate,,) = IGauge(gauge).reward_data(rt);
+
+            if(block.timestamp > period_finish){
+                rrate = 0;
+            }
 
             //get rate per total supply
             if(tSupply > 0){

@@ -17,7 +17,7 @@
             "cvxIncentives_old": "0x665D4Bea98e3a1849526553453E8369B448C6AD4",
             "cvxIncentives": "0x4223AA5BfD783dEDCC54585cdC1cFE9eA1587C0f",
             "feeDeposit": "0xE7CdD5ed586A095e395f2007449721eA2a5B878a",
-            "poolUtilities": "0xB20e684dE561C54021651050F4518dAa1976eB42",
+            "poolUtilities": "0x87CA40ace7457292cD7cD75e1976669C82c56b5c",
             "poolManager_old": "0x98ECe0d8aBd1f96672a497D3053999Df172FaA8b",
             "poolManager": "0x3CeeAd93972703a4668EcD9FcAB5b99C8fa39ae3",
             "boosterPlaceholder": "0xD363d104f604497C4f11B269D8dbf2820ABBF4e0",
@@ -45,7 +45,7 @@
             "rewardPool": "0x65eEE113D796F06d8cda873813912d0Bb668a1f5",
             "cvxIncentives": "0xA46944D0845F786117D0e1034fC10585747C861b",
             "feeDeposit": "0x665D4Bea98e3a1849526553453E8369B448C6AD4",
-            "poolUtilities": "0x25E12482a25CF36EC70fDA2A09C1ED077Fc21616",
+            "poolUtilities": "0xbA07563bB124531800D04e3A3dDC9Ccfd831DbB0",
             "poolManager": "0xFC0A2FfDea23804494aA1707741E5A6Eaa2f8017"
         },
         "curve": {

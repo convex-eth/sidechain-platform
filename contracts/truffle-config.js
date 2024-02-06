@@ -49,13 +49,13 @@ module.exports = {
       gasPrice: 20000000000
     },
     mainnetArb: {
-      provider: () => new HDWalletProvider(api_keys.mnemonic, api_keys.provider_arbitrum),
+      provider: () => new HDWalletProvider(api_keys.mnemonic, api_keys.provider_arbitrum_alch),
       network_id: 42161,
       gasLimit: 6721975,
       gasPrice: 500000000
     },
     mainnetPoly: {
-      provider: () => new HDWalletProvider(api_keys.mnemonic, api_keys.provider_polygon_llama),
+      provider: () => new HDWalletProvider(api_keys.mnemonic, api_keys.provider_polygon_drpc),
       network_id: 137,
       // gasLimit: 6721975,
       gasPrice: 200000000000
@@ -69,7 +69,8 @@ module.exports = {
     debugArb: {
       host: "127.0.0.1",
       port: 8545,
-      network_id: "42161",
+      // network_id: "42161",
+      network_id: "1",
       gas: 6721975,
       gasPrice: 500000000
     },
