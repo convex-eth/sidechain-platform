@@ -54,5 +54,29 @@
             "veOracle": "0x12F407340697Ae0b177546E535b91A5be021fBF9"
         },
         "pools": []
+    },
+    "fraxtal": {
+        "system": {
+            "deployer": "0x947B7742C403f20e5FaCcDAc5E092C943E7D0277",
+            "multisig": "0x6111ABF720051309012FcdBc2910054E41dcFF8c",
+            "voteProxy": "0x989AEb4d175e16225E39E87d0D97A3360524AD80",
+            "cvx": "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+            "booster": "0xF403C135812408BFbE8713b5A23a04b3D48AAE31",
+            "proxyFactory": "0xA46944D0845F786117D0e1034fC10585747C861b",
+            "rewardHook": "0x3e342768FeAA34c88429DE9429a2D9150b9e6dB6",
+            "rewardManager": "0xFC0A2FfDea23804494aA1707741E5A6Eaa2f8017",
+            "cvxIncentives": "0xCF50b810E57Ac33B91dCF525C6ddd9881B139332",
+            "poolManager": "0x3b2D30734491AD77880d31e8aFe2A4d8aC135a9C",
+            "rewardFactory": "0xE029881C3277b7B4935781B3D9fA0fe7eC4177cd",
+            "rewardPool": "0x25E12482a25CF36EC70fDA2A09C1ED077Fc21616",
+            "feeDeposit": "0xF5DCCD4cC45E1c3397A80bABAa1071F556539776",
+            "poolUtilities": "TODO",
+            "cvxCrv": "0x62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7"
+        },
+        "curve": {
+            "gaugeFactory": "0x0000000000000000000000000000000000000000",
+            "crv": "0x0000000000000000000000000000000000000000",
+            "veOracle": "0x0000000000000000000000000000000000000000"
+        }
     }
 }

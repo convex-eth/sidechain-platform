@@ -46,7 +46,7 @@ module.exports = {
       provider: () => new HDWalletProvider(api_keys.mnemonic, api_keys.provider_mainnet),
       network_id: 1, 
       gas: 6721975,
-      gasPrice: 20000000000
+      gasPrice: 200000000
     },
     mainnetArb: {
       provider: () => new HDWalletProvider(api_keys.mnemonic, api_keys.provider_arbitrum_alch),
@@ -59,6 +59,17 @@ module.exports = {
       network_id: 137,
       // gasLimit: 6721975,
       gasPrice: 200000000000
+    },
+    mainnetFraxtal: {
+      provider: () => new HDWalletProvider(api_keys.mnemonic, api_keys.provider_fraxtal),
+      network_id: 252,
+      // gasLimit: 6721975,
+      gasPrice: 1100000,
+      verify: {
+        apiUrl: 'https://api.fraxscan.com/api',
+        apiKey: api_keys.fraxscan,
+        explorerUrl: 'https://fraxscan.com/address',
+      }
     },
     mainnetOp: {
       provider: () => new HDWalletProvider(api_keys.mnemonic, api_keys.provider_optimism),
@@ -80,6 +91,14 @@ module.exports = {
       network_id: "137",
       gas: 6721975,
       gasPrice: 500000000
+    },
+    debugFraxtal: {
+      host: "127.0.0.1",
+      port: 8545,
+      // network_id: "252",
+      network_id: "1",
+      gas: 6721975,
+      gasPrice: 1100000
     },
     debug: {
       host: "127.0.0.1",
@@ -116,6 +135,7 @@ module.exports = {
   api_keys: {
     etherscan: api_keys.etherscan,
     arbiscan: api_keys.arbiscan,
-    polygonscan: api_keys.polyscan
+    polygonscan: api_keys.polyscan,
+    fraxscan: api_keys.fraxscan
   }
 };
