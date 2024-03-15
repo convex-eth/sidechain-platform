@@ -69,7 +69,9 @@ module.exports = {
         apiUrl: 'https://api.fraxscan.com/api',
         apiKey: api_keys.fraxscan,
         explorerUrl: 'https://fraxscan.com/address',
-      }
+      },
+      maxPriorityFeePerGas:10000,
+      maxFeePerGas:1001000,
     },
     mainnetOp: {
       provider: () => new HDWalletProvider(api_keys.mnemonic, api_keys.provider_optimism),
