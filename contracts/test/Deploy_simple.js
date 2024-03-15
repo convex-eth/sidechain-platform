@@ -124,6 +124,9 @@ const getChainContracts = () => {
   if(NETWORK == "debugPoly" || NETWORK == "mainnetPoly"){
     contracts = contractList.polygon;
   }
+  if(NETWORK == "debugFraxtal" || NETWORK == "mainnetFraxtal"){
+    contracts = contractList.fraxtal;
+  }
 
   console.log("using crv: " +contracts.curve.crv);
   return contracts;
@@ -161,9 +164,18 @@ contract("Deploy simple contract", async accounts => {
 
     console.log("\n\n >>>> deploy >>>>")
     console.log("deployer: " +deployer);
+    await unlockAccount(deployer);
+
+    await web3.eth.getGasPrice().then(a=>console.log("gas price: " +a))
+
+    var currentNonce = await web3.eth.getTransactionCount(deployer);
+    console.log("nonce: "+currentNonce);
 
     var booster = await Booster.at(chainContracts.system.booster);
     await booster.poolLength().then(a=>console.log("pool length " +a))
+
+    await booster.setFactoryCrv(chainContracts.curve.gaugeFactory, chainContracts.curve.crv, {from:deployer});
+    console.log("set factory crv");
 
     let poolUtil = await PoolUtilities.new(chainContracts.system.booster,crv.address, {from:deployer});
     console.log("poolUtil: " +poolUtil.address);

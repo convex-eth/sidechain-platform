@@ -7,6 +7,7 @@ import "./interfaces/IStaker.sol";
 import "./interfaces/IFeeDistro.sol";
 import "./interfaces/IPoolFactory.sol";
 import "./interfaces/IRewardManager.sol";
+import "./interfaces/ITokenMinter.sol";
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -25,6 +26,7 @@ contract Booster is ReentrancyGuard{
     address public owner; //owner
     address public pendingOwner; //pending owner
     address public poolManager; //add and shutdown pools
+    address public mintManager; //mint tokens that voteproxy has ownership of
     address public rescueManager; //specific role just for pulling non-lp/gauge tokens from voterproxy
     address public rewardManager; //controls rewards
     address public immutable staker; //voter proxy
@@ -52,12 +54,15 @@ contract Booster is ReentrancyGuard{
     event SetPendingOwner(address indexed _address);
     event OwnerChanged(address indexed _address);
     event CrvFactorySet(address indexed _factory, address _crv);
+    event FeesChanged(uint256 _fees);
+    event FeeDepositChanged(address _feedeposit);
 
     constructor(address _staker) {
         isShutdown = false;
         staker = _staker;
         owner = msg.sender;
         poolManager = msg.sender;
+        mintManager = msg.sender;
         rescueManager = msg.sender;
     }
 
@@ -99,6 +104,14 @@ contract Booster is ReentrancyGuard{
         poolManager = _poolM;
     }
 
+    //set a mint manager
+    //note: only the mint manager can relinquish control
+    function setMintManager(address _mintM) external {
+        require(msg.sender == mintManager, "!auth");
+        require(_mintM != address(0),"invalid address");
+        mintManager = _mintM;
+    }
+
     //set a rescue manager for tokens
     //set by owner. separate role though in case something needs to be streamlined like claiming outside rewards.
     function setRescueManager(address _rescueM) external {
@@ -129,6 +142,7 @@ contract Booster is ReentrancyGuard{
         require(msg.sender == owner, "!auth");
         
         feeDeposit = _deposit;
+        emit FeeDepositChanged(_deposit);
     }
 
     //set platform fees
@@ -137,6 +151,7 @@ contract Booster is ReentrancyGuard{
         require(_platformFees <= MaxFees, ">MaxFees");
 
         fees = _platformFees;
+        emit FeesChanged(_platformFees);
     }
 
     //rescue a token from the voter proxy
@@ -145,6 +160,12 @@ contract Booster is ReentrancyGuard{
         require(msg.sender==rescueManager, "!auth");
 
         IStaker(staker).rescue(_token, _to);
+    }
+
+    function setTokenMinterOperator(address _token, address _minter, bool _active) external{
+        require(msg.sender==mintManager, "!auth");
+
+        ITokenMinter(_token).setOperator(_minter, _active);
     }
 
     /// END SETTER SECTION ///
