@@ -66,6 +66,10 @@ contract Booster is ReentrancyGuard{
         rescueManager = msg.sender;
     }
 
+    function _proxyCall(address _to, bytes memory _data) internal{
+        (bool success,) = IStaker(staker).execute(_to,uint256(0),_data);
+        require(success, "Proxy Call Fail");
+    }
 
     /// SETTER SECTION ///
 
@@ -165,7 +169,8 @@ contract Booster is ReentrancyGuard{
     function setTokenMinterOperator(address _token, address _minter, bool _active) external{
         require(msg.sender==mintManager, "!auth");
 
-        ITokenMinter(_token).setOperator(_minter, _active);
+        bytes memory data = abi.encodeWithSelector(bytes4(keccak256("setOperator(address,bool)")), _minter, _active);
+        _proxyCall(_token, data);
     }
 
     /// END SETTER SECTION ///
@@ -374,7 +379,7 @@ contract Booster is ReentrancyGuard{
     //instead of being pulled to the voterproxy/staker contract 
     function setGaugeRedirect(address _gauge, address _rewards) internal returns(bool){
         bytes memory data = abi.encodeWithSelector(bytes4(keccak256("set_rewards_receiver(address)")), _rewards);
-        IStaker(staker).execute(_gauge,uint256(0),data);
+        _proxyCall(_gauge, data);
         return true;
     }
 

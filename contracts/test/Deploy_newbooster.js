@@ -15,6 +15,7 @@ const PoolRewardHook = artifacts.require("PoolRewardHook");
 const ExtraRewardPool = artifacts.require("ExtraRewardPool");
 const PoolUtilities = artifacts.require("PoolUtilities");
 const PoolManager = artifacts.require("PoolManager");
+const cvxToken = artifacts.require("cvxToken");
 
 const IERC20 = artifacts.require("IERC20");
 const ERC20 = artifacts.require("ERC20");
@@ -171,7 +172,7 @@ contract("Deploy System and test staking/rewards", async accounts => {
     //system
     var usingproxy = await VoterProxy.at(chainContracts.system.voteProxy);
     let pfactory = await ProxyFactory.at(chainContracts.system.proxyFactory);
-    var cvx = await IERC20.at(chainContracts.system.cvx);
+    var cvx = await cvxToken.at(chainContracts.system.cvx);
 
     // return;
     var oldbooster = await Booster.at(chainContracts.system.booster);
@@ -264,7 +265,26 @@ contract("Deploy System and test staking/rewards", async accounts => {
     if(config.network == "debugFraxtal" || config.network == "mainnetFraxtal"){
       contractList.fraxtal = chainContracts;
     }
-    // jsonfile.writeFileSync("./contracts.json", contractList, { spaces: 4 });
+    if(config.network.includes("mainnet")){
+      console.log("updating contract json...");
+      jsonfile.writeFileSync("./contracts.json", contractList, { spaces: 4 });
+    }
+    jsonfile.writeFileSync("./contracts.json", contractList, { spaces: 4 });
+
+    //deploy initial pools
+    console.log("deploy initial pools...");
+    await poolManager.addPool("0x9ccc509a5b4869bac6be86e79ea00c25942852f4",chainContracts.curve.gaugeFactory, {from:deployer});
+    await poolManager.addPool("0x98a6c35546be6f7c545c99efb48f4673ed2c99fc",chainContracts.curve.gaugeFactory, {from:deployer});
+    await poolManager.addPool("0xaa6ddba00de48d41e41543ef0a78ab31aae4de8d",chainContracts.curve.gaugeFactory, {from:deployer});
+    await poolManager.addPool("0xe049aa6fbd64210bdeddc15f5a861084e6ee8b57",chainContracts.curve.gaugeFactory, {from:deployer});
+    await poolManager.addPool("0x64100c172d5dc8007e3ee701ecd99468619b6583",chainContracts.curve.gaugeFactory, {from:deployer});
+    await poolManager.addPool("0x6d8bc3cfbd1b62f3fb0e5517ebca283af1185576",chainContracts.curve.gaugeFactory, {from:deployer});
+    await poolManager.addPool("0xfe2afbe02d800836d2c7081eef2a4a8408f90488",chainContracts.curve.gaugeFactory, {from:deployer});
+    await poolManager.addPool("0x72bd89f2e3470fa5d188cf04eda17e8145eb4bf1",chainContracts.curve.gaugeFactory, {from:deployer});
+    await poolManager.addPool("0xd1d981ddd0c9a0469e7d8cee877f83b5877d7260",chainContracts.curve.gaugeFactory, {from:deployer});
+
+
+    console.log("done");
     return;
   });
 });
