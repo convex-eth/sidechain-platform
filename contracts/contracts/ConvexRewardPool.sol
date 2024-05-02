@@ -139,6 +139,30 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
             return;
         }
 
+        uint32 size;
+
+        assembly {
+            size := extcodesize(_token)
+        }
+
+        if (size > 0) {
+            (bool success, ) = _token.call(
+                abi.encodeWithSelector(
+                    IERC20(_token).balanceOf.selector,
+                    address(this)
+                )
+            );
+            if (!success) {
+                // Token balance check failed, treat as non-compliant or non-existent token
+                _invalidateReward(_token);
+                return;
+            }
+        } else {
+            // Address is not a contract, treat as non-compliant or non-existent token
+            _invalidateReward(_token);
+            return;
+        }
+
         //add to reward list if new
         if(rewardMap[_token] == 0){
             //check reward count for new additions
@@ -153,7 +177,17 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
 
             //workaround: transfer 0 to self so that earned() reports correctly
             //with new tokens
-            try IERC20(_token).transfer(address(this), 0){}catch{}
+            (bool _success, bytes memory _data) = _token.call(
+                abi.encodeWithSelector(
+                    IERC20(_token).transfer.selector,
+                    address(this),
+                    0
+                )
+            );
+            if (!_success || (_data.length > 0 && !abi.decode(_data, (bool)))) {
+                // Token transfer failed or did not return true, treat as non-compliant or non-existent token
+                return;
+            }
 
             emit RewardAdded(_token);
         }else{
@@ -171,18 +205,26 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     }
 
     //allow invalidating a reward if the token causes trouble in calcRewardIntegral
-    function invalidateReward(address _token) public nonReentrant{
-        require(IBooster(convexBooster).rewardManager() == msg.sender, "!owner");
-
+    function _invalidateReward(address _token) internal {
         uint256 index = rewardMap[_token];
-        if(index > 0){
+        if (index > 0) {
             //index is registered rewards minus one
-            RewardType storage reward = rewards[index-1];
+            RewardType storage reward = rewards[index - 1];
             require(reward.reward_token == _token, "!mismatch");
             //set reward token address to 0, integral calc will now skip
             reward.reward_token = address(0);
             emit RewardInvalidated(_token);
         }
+    }
+
+    //allow invalidating a reward if the token causes trouble in calcRewardIntegral
+    function invalidateReward(address _token) public nonReentrant {
+        require(
+            IBooster(convexBooster).rewardManager() == msg.sender,
+            "!owner"
+        );
+
+        _invalidateReward(_token);
     }
 
     //set a reward hook that calls an outside contract to pull external rewards

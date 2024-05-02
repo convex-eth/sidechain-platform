@@ -53,8 +53,20 @@ contract PoolRewardHook is IRewardHook{
         uint256 rewardLength = poolRewardList[msg.sender].length;
         for(uint256 i = 0; i < rewardLength; i++){
             //use try-catch as this could be a 3rd party contract
-            try IRewards(poolRewardList[msg.sender][i]).getReward(msg.sender){
-            }catch{}
+            //use try-catch as this could be a 3rd party contract
+            (bool success, bytes memory data) = address(
+                poolRewardList[msg.sender][i]
+            ).call(
+                    abi.encodeWithSelector(
+                        IRewards(poolRewardList[msg.sender][i])
+                            .getReward
+                            .selector,
+                        msg.sender
+                    )
+                );
+            if (!success || (data.length > 0 && !abi.decode(data, (bool)))) {
+                return;
+            }
         }
     }
 
