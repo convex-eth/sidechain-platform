@@ -153,7 +153,15 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
 
             //workaround: transfer 0 to self so that earned() reports correctly
             //with new tokens
-            try IERC20(_token).transfer(address(this), 0){}catch{}
+            if(_token.code.length > 0){
+                try IERC20(_token).transfer(address(this), 0){}catch{
+                    //cant transfer? invalidate
+                    _invalidateReward(_token);
+                }
+            }else{
+                //non contract address added? invalidate
+                _invalidateReward(_token);
+            }
 
             emit RewardAdded(_token);
         }else{
@@ -171,9 +179,13 @@ contract ConvexRewardPool is ERC20, ReentrancyGuard{
     }
 
     //allow invalidating a reward if the token causes trouble in calcRewardIntegral
-    function invalidateReward(address _token) public nonReentrant{
+    function invalidateReward(address _token) external nonReentrant{
         require(IBooster(convexBooster).rewardManager() == msg.sender, "!owner");
 
+        _invalidateReward(_token);
+    }
+
+    function _invalidateReward(address _token) internal{
         uint256 index = rewardMap[_token];
         if(index > 0){
             //index is registered rewards minus one
