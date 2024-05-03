@@ -42,7 +42,7 @@
             "rewardHook": "0xEdCCB35798fae4925718A43cc608aE136208aa8D",
             "rewardManager": "0x3c995e43E6ddD551E226F4c5544C77BfeD147aB9",
             "rewardFactory": "0xCF50b810E57Ac33B91dCF525C6ddd9881B139332",
-            "rewardPool": "0x65eEE113D796F06d8cda873813912d0Bb668a1f5",
+            "rewardPool": "0x43353a1f971CA40326e694FB1bc61f7C0219a8FA",
             "cvxIncentives": "0xA46944D0845F786117D0e1034fC10585747C861b",
             "feeDeposit": "0x665D4Bea98e3a1849526553453E8369B448C6AD4",
             "poolUtilities": "0xbA07563bB124531800D04e3A3dDC9Ccfd831DbB0",
@@ -68,7 +68,7 @@
             "cvxIncentives": "0x757c2375b511F10E6347943a54E3B8F9b1b9137c",
             "poolManager": "0xa7A4Df20e207C9410808b4217c1810096a1dABD1",
             "rewardFactory": "0x2D82Cea602a431eDe94c926D50c4C7c3b7c5BeA5",
-            "rewardPool": "0x25E12482a25CF36EC70fDA2A09C1ED077Fc21616",
+            "rewardPool": "0xc5158Df20Db993Ab56b37e5C2577Aa2210522d7b",
             "feeDeposit": "0xF5DCCD4cC45E1c3397A80bABAa1071F556539776",
             "poolUtilities": "0xbf7AF11835F49CaF4C75fdF0570755584FB95F16",
             "cvxCrv": "0x62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7"

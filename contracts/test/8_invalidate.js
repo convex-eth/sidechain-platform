@@ -171,16 +171,16 @@ contract("Deploy System and test staking/rewards", async accounts => {
 
     var poolmanager = await PoolManager.at(chainContracts.system.poolManager);
     var booster = await Booster.at(chainContracts.system.booster);
-    var boosterOwner = await BoosterOwner.at(chainContracts.system.boosterOwner);
+    // var boosterOwner = await BoosterOwner.at(chainContracts.system.boosterOwner);
     var rewardFactory = await RewardFactory.at(chainContracts.system.rewardFactory);
 
     var impl = await ConvexRewardPool.new();
     console.log("new impl: " +impl.address);
 
-    return;
+    // return;
 
-    // await rewardFactory.setImplementation(impl.address,{from:multisig,gasPrice:0});
-    await boosterOwner.setRewardImplementation(impl.address,{from:multisig,gasPrice:0});
+    await rewardFactory.setImplementation(impl.address,{from:multisig,gasPrice:0});
+    // await boosterOwner.setRewardImplementation(impl.address,{from:multisig,gasPrice:0});
     
     
     var gauge = "0x5839337bf070Fea56595A5027e83Cd7126b23884";
