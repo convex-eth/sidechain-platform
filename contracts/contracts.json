@@ -75,6 +75,7 @@
         },
         "curve": {
             "gaugeFactory": "0xeF672bD94913CB6f1d2812a6e18c1fFdEd8eFf5c",
+            "gaugeFactoryNew": "0x0B8D6B6CeFC7Aa1C2852442e518443B1b22e1C52",
             "crv": "0x331B9182088e2A7d6D3Fe4742AbA1fB231aEcc56",
             "veOracle": "0xc73e8d8f7A68Fc9d67e989250484E57Ae03a5Da3"
         }
