@@ -70,7 +70,7 @@
             "rewardFactory": "0x2D82Cea602a431eDe94c926D50c4C7c3b7c5BeA5",
             "rewardPool": "0xc5158Df20Db993Ab56b37e5C2577Aa2210522d7b",
             "feeDeposit": "0xF5DCCD4cC45E1c3397A80bABAa1071F556539776",
-            "poolUtilities": "0xbf7AF11835F49CaF4C75fdF0570755584FB95F16",
+            "poolUtilities": "0xA20Ca8E22113b79A1FEB082bcb778408f9f334e6",
             "cvxCrv": "0x62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7"
         },
         "curve": {

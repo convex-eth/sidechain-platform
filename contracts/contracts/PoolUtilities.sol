@@ -2,6 +2,7 @@
 pragma solidity 0.8.10;
 
 import "./interfaces/IGauge.sol";
+import "./interfaces/IGaugeOther.sol";
 import "./interfaces/IBooster.sol";
 import "./interfaces/IConvexRewardPool.sol";
 import "./interfaces/IRewardHook.sol";
@@ -38,7 +39,12 @@ contract PoolUtilities{
         if(week == 0){
             //get current period -> timestamp from period
             uint256 period = IGauge(gauge).period();
-            uint256 periodTime = IGauge(gauge).period_timestamp(period);
+            uint256 periodTime;
+            try IGauge(gauge).period_timestamp(period) returns (uint256 _periodTime){
+                periodTime = _periodTime;
+            } catch{
+                periodTime = IGaugeOther(gauge).period_timestamp(int128(uint128(period)));
+            }
 
             //get week from last checkpointed period
             week = periodTime / WEEK;
